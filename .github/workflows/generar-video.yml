@@ -1,0 +1,80 @@
+name: Generar vídeo del canal
+
+on:
+  schedule:
+    # 08:00 UTC = 09:00 en España (horario de invierno). Ajusta la hora si quieres.
+    - cron: '0 8 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Clonar tu repositorio (para leer data/topics.json)
+        uses: actions/checkout@v4
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Clonar MoneyPrinterTurbo
+        run: git clone --depth 1 https://github.com/harry0703/MoneyPrinterTurbo.git mpt
+
+      - name: Instalar dependencias de MoneyPrinterTurbo
+        working-directory: mpt
+        run: pip install -r requirements.txt
+
+      - name: Elegir un tema al azar
+        id: topic
+        run: |
+          python3 -c "
+          import json, random
+          with open('data/topics.json2') as f:
+              topics = json.load(f)
+          t = random.choice(topics)
+          print('subject=' + t['video_subject'])
+          with open('topic_subject.txt', 'w') as f:
+              f.write(t['video_subject'])
+          with open('topic_prompt.txt', 'w') as f:
+              f.write(t['video_script_prompt'])
+          " >> "$GITHUB_OUTPUT"
+
+      - name: Crear config.toml con las claves (no se sube al repositorio)
+        working-directory: mpt
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+        run: |
+          cat > config.toml <<EOF
+          [app]
+          video_source = "pixabay"
+          pixabay_api_keys = ["${PIXABAY_API_KEY}"]
+          llm_provider = "gemini"
+          gemini_api_key = "${GEMINI_API_KEY}"
+          gemini_model_name = "gemini-2.0-flash"
+          subtitle_provider = "edge"
+          EOF
+
+      - name: Generar el vídeo
+        working-directory: mpt
+        run: |
+          python3 cli.py \
+            --video-subject "$(cat ../topic_subject.txt)" \
+            --video-script-prompt "$(cat ../topic_prompt.txt)" \
+            --video-source pixabay \
+            --video-language es-ES \
+            --voice-name "es-ES-AlvaroNeural" \
+            --paragraph-number 4 \
+            --stop-at video
+
+      - name: Subir el vídeo generado como resultado descargable
+        uses: actions/upload-artifact@v4
+        with:
+          name: video-generado-${{ github.run_number }}
+          path: mpt/storage/tasks/**/*.mp4
+          retention-days: 14
