@@ -34,7 +34,7 @@ jobs:
         run: |
           python3 -c "
           import json, random
-          with open('data/topics.json2') as f:
+          with open('data/topics.json') as f:
               topics = json.load(f)
           t = random.choice(topics)
           print('subject=' + t['video_subject'])
