@@ -1,1 +1,28 @@
 
+[
+  {
+    "id": "db_cooper",
+    "video_subject": "El misterio de D.B. Cooper: el secuestrador que saltó de un avión con 200.000 dólares y jamás fue encontrado",
+    "video_script_prompt": "Escribe un guion narrativo de 2-3 minutos, en español, tono misterioso y serio, basado ESTRICTAMENTE en hechos verificados y ampliamente documentados sobre el caso D.B. Cooper (1971, secuestro del vuelo Northwest Orient 305, rescate de 200.000 dólares, salto en paracaídas, investigación del FBI, cierre del caso en 2016). No inventes nombres, citas ni detalles que no sean de dominio público y verificados. Si alguna cifra o dato no es seguro, indícalo como teoría, no como hecho."
+  },
+  {
+    "id": "flight_19",
+    "video_subject": "El Vuelo 19: los cinco aviones de la Marina de EE.UU. que desaparecieron en el Triángulo de las Bermudas",
+    "video_script_prompt": "Escribe un guion narrativo de 2-3 minutos, en español, tono misterioso y serio, basado en hechos verificados sobre la desaparición del Vuelo 19 (5 de diciembre de 1945, Marina de EE.UU., Triángulo de las Bermudas, y el hidroavión de rescate PBM Mariner que también desapareció). Distingue claramente entre hechos confirmados y teorías no probadas (errores de navegación, mal tiempo, leyendas del Triángulo). No afirmes como ciertas teorías paranormales."
+  },
+  {
+    "id": "amelia_earhart",
+    "video_subject": "Amelia Earhart: la desaparición de la aviadora más famosa de la historia sobre el Pacífico",
+    "video_script_prompt": "Escribe un guion narrativo de 2-3 minutos, en español, tono misterioso y serio, basado en hechos verificados sobre la desaparición de Amelia Earhart y su navegante Fred Noonan en 1937 durante su vuelo alrededor del mundo, cerca de la isla Howland. Menciona las principales teorías investigadas (caída en el océano, isla Nikumaroro) como teorías, no como hechos confirmados."
+  },
+  {
+    "id": "lars_mittank",
+    "video_subject": "El caso de Lars Mittank: el turista alemán que desapareció tras huir aterrorizado de un hospital en Bulgaria",
+    "video_script_prompt": "Escribe un guion narrativo de 2-3 minutos, en español, tono misterioso y serio, basado en hechos verificados y documentados públicamente sobre el caso de Lars Mittank (2014, Golden Sands, Bulgaria): la pelea previa, el ingreso hospitalario, las imágenes de cámaras de seguridad donde se le ve huyendo asustado, y que nunca fue encontrado. No inventes diálogos ni afirmes teorías como hechos."
+  },
+  {
+    "id": "roanoke",
+    "video_subject": "La colonia perdida de Roanoke: 115 colonos que desaparecieron sin dejar rastro en 1587",
+    "video_script_prompt": "Escribe un guion narrativo de 2-3 minutos, en español, tono misterioso y serio, basado en hechos históricos verificados sobre la Colonia Perdida de Roanoke (1587), incluyendo la palabra 'CROATOAN' tallada encontrada por John White en 1590. Presenta las teorías (asimilación con nativos, enfermedad, ataque) como teorías históricas, nunca como hechos confirmados."
+  }
+]
