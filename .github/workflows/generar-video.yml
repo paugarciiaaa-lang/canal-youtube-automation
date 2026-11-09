@@ -2,14 +2,20 @@ name: Generar vídeo del canal
 
 on:
   schedule:
-    # 08:00 UTC = 09:00 en España (horario de invierno). Ajusta la hora si quieres.
+    # 08:00 UTC = 09:00 en España durante el horario de invierno.
     - cron: '0 8 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      video_subject:
+        description: 'Tema del vídeo (déjalo vacío para elegir uno aleatorio)'
+        required: false
+        type: string
+        default: ''
 
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - name: Clonar tu repositorio (para leer data/topics.json)
         uses: actions/checkout@v4
@@ -29,20 +35,53 @@ jobs:
         working-directory: mpt
         run: pip install -r requirements.txt
 
-      - name: Elegir un tema al azar
-        id: topic
+      - name: Elegir tema manual o aleatorio
+        env:
+          USER_TOPIC: ${{ github.event.inputs.video_subject }}
         run: |
-          python3 -c "
-          import json, random
-          with open('data/topics.json') as f:
-              topics = json.load(f)
-          t = random.choice(topics)
-          print('subject=' + t['video_subject'])
-          with open('topic_subject.txt', 'w') as f:
-              f.write(t['video_subject'])
-          with open('topic_prompt.txt', 'w') as f:
-              f.write(t['video_script_prompt'])
-          " >> "$GITHUB_OUTPUT"
+          python3 - <<'PY'
+          import json
+          import os
+          import random
+
+          user_topic = (os.environ.get("USER_TOPIC") or "").strip()
+          if user_topic:
+              subject = user_topic
+              print(f"Tema elegido manualmente: {subject}")
+          else:
+              with open("data/topics.json", encoding="utf-8") as f:
+                  topics = json.load(f)
+              selected = random.choice(topics)
+              subject = selected["video_subject"]
+              print(f"Tema elegido al azar: {subject}")
+
+          prompt = """
+          Escribe un guion documental de entre 1.500 y 1.800 palabras, pensado para
+          una narración de aproximadamente 10 a 15 minutos en español de España.
+          Divide el guion en 10 párrafos o bloques narrativos sustanciales.
+          Tema: el indicado en el título.
+
+          Estructura:
+          1. Gancho inicial potente durante los primeros 20-30 segundos.
+          2. Contexto y presentación de las personas, lugares y fechas relevantes.
+          3. Relato cronológico y detallado de los acontecimientos.
+          4. Investigación, pruebas, testimonios y datos documentados.
+          5. Principales hipótesis y explicaciones alternativas.
+          6. Qué se sabe, qué no se sabe y qué sigue sin explicación.
+          7. Conclusión que cierre la historia y deje una pregunta al espectador.
+
+          Reglas: tono serio, inmersivo y misterioso, propio del canal Misterios
+          Incomprendidos. No inventes hechos, nombres, citas, documentos ni diálogos.
+          Distingue claramente los hechos verificados de las teorías y especulaciones.
+          No repitas ideas para alargar el texto. Evita introducciones genéricas y
+          mantén el interés narrativo durante todo el vídeo.
+          """
+
+          with open("topic_subject.txt", "w", encoding="utf-8") as f:
+              f.write(subject)
+          with open("topic_prompt.txt", "w", encoding="utf-8") as f:
+              f.write(prompt)
+          PY
 
       - name: Crear config.toml con las claves (no se sube al repositorio)
         working-directory: mpt
@@ -60,7 +99,7 @@ jobs:
           subtitle_provider = "edge"
           EOF
 
-      - name: Generar el vídeo
+      - name: Generar vídeo horizontal largo
         working-directory: mpt
         run: |
           python3 cli.py \
@@ -69,7 +108,10 @@ jobs:
             --video-source pixabay \
             --video-language es-ES \
             --voice-name "gemini:Algenib" \
-            --paragraph-number 4 \
+            --paragraph-number 10 \
+            --video-aspect "16:9" \
+            --video-fit-mode "cover" \
+            --match-materials-to-script \
             --stop-at video
 
       - name: Subir el vídeo generado como resultado descargable
