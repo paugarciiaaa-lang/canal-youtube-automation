@@ -68,7 +68,7 @@ jobs:
             --video-script-prompt "$(cat ../topic_prompt.txt)" \
             --video-source pixabay \
             --video-language es-ES \
-            --voice-name "es-ES-AlvaroNeural" \
+            --voice-name "gemini:Algenib" \
             --paragraph-number 4 \
             --stop-at video
 
