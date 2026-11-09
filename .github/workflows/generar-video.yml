@@ -2,8 +2,10 @@ name: Generar vídeo del canal
 
 on:
   schedule:
-    # 08:00 UTC = 09:00 en España durante el horario de invierno.
-    - cron: '0 8 * * *'
+    # GitHub usa UTC: una ejecución para horario de verano y otra para invierno.
+    # El control posterior deja pasar solo la que corresponde a las 21:00 en Europe/Madrid.
+    - cron: '0 19 * * *'
+    - cron: '0 20 * * *'
   workflow_dispatch:
     inputs:
       video_subject:
@@ -17,25 +19,41 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
+      - name: Comprobar que son las 21:00 en España
+        id: local_time
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != "schedule" ] || [ "$(TZ=Europe/Madrid date +%H)" = "21" ]; then
+            echo "run_now=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_now=false" >> "$GITHUB_OUTPUT"
+            echo "Esta ejecución programada no corresponde a las 21:00 en España; se omite."
+          fi
+
       - name: Clonar tu repositorio (para leer data/topics.json)
+        if: steps.local_time.outputs.run_now == 'true'
         uses: actions/checkout@v4
 
       - name: Instalar Python
+        if: steps.local_time.outputs.run_now == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Instalar ffmpeg
+        if: steps.local_time.outputs.run_now == 'true'
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: Clonar MoneyPrinterTurbo
+        if: steps.local_time.outputs.run_now == 'true'
         run: git clone --depth 1 https://github.com/harry0703/MoneyPrinterTurbo.git mpt
 
       - name: Instalar dependencias de MoneyPrinterTurbo
+        if: steps.local_time.outputs.run_now == 'true'
         working-directory: mpt
         run: pip install -r requirements.txt
 
       - name: Elegir tema manual o aleatorio
+        if: steps.local_time.outputs.run_now == 'true'
         env:
           USER_TOPIC: ${{ github.event.inputs.video_subject }}
         run: |
@@ -84,6 +102,7 @@ jobs:
           PY
 
       - name: Crear config.toml con las claves (no se sube al repositorio)
+        if: steps.local_time.outputs.run_now == 'true'
         working-directory: mpt
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -100,6 +119,7 @@ jobs:
           EOF
 
       - name: Generar vídeo horizontal largo
+        if: steps.local_time.outputs.run_now == 'true'
         working-directory: mpt
         run: |
           python3 cli.py \
@@ -115,6 +135,7 @@ jobs:
             --stop-at video
 
       - name: Subir el vídeo generado como resultado descargable
+        if: steps.local_time.outputs.run_now == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: video-generado-${{ github.run_number }}
