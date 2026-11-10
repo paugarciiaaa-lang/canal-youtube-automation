@@ -101,6 +101,22 @@ jobs:
               f.write(prompt)
           PY
 
+      - name: Verificar secretos necesarios
+        if: steps.local_time.outputs.run_now == 'true'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "::error::Falta el secreto GEMINI_API_KEY en GitHub Actions."
+            exit 1
+          fi
+          if [ -z "$PIXABAY_API_KEY" ]; then
+            echo "::error::Falta el secreto PIXABAY_API_KEY en GitHub Actions."
+            exit 1
+          fi
+          echo "Los secretos necesarios están configurados (valores ocultos)."
+
       - name: Crear config.toml con las claves (no se sube al repositorio)
         if: steps.local_time.outputs.run_now == 'true'
         working-directory: mpt
