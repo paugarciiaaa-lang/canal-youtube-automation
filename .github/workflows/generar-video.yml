@@ -284,7 +284,7 @@ jobs:
             git add data/topic_history.json
             if ! git diff --cached --quiet; then
               git commit -m "Actualizar historial de temas de Caspitas"
-              git push
+              git push origin "HEAD:${GITHUB_REF_NAME}"
             fi
           fi
 
