@@ -7,12 +7,14 @@ on:
       - "scripts/**"
       - "tests/**"
       - ".github/workflows/tests.yml"
+      - ".github/workflows/generar-video.yml"
   pull_request:
     branches: [main]
     paths:
       - "scripts/**"
       - "tests/**"
       - ".github/workflows/tests.yml"
+      - ".github/workflows/generar-video.yml"
   workflow_dispatch:
 
 permissions:
