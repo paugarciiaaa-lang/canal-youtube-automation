@@ -1,28 +1,126 @@
-
 [
   {
     "id": "db_cooper",
-    "video_subject": "El misterio de D.B. Cooper: el secuestrador que saltó de un avión con 200.000 dólares y jamás fue encontrado",
-    "video_script_prompt": "Escribe un guion narrativo de 2-3 minutos, en español, tono misterioso y serio, basado ESTRICTAMENTE en hechos verificados y ampliamente documentados sobre el caso D.B. Cooper (1971, secuestro del vuelo Northwest Orient 305, rescate de 200.000 dólares, salto en paracaídas, investigación del FBI, cierre del caso en 2016). No inventes nombres, citas ni detalles que no sean de dominio público y verificados. Si alguna cifra o dato no es seguro, indícalo como teoría, no como hecho."
+    "video_subject": "El misterio de D.B. Cooper: el secuestrador que saltó de un avión con 200.000 dólares y desapareció."
   },
   {
     "id": "flight_19",
-    "video_subject": "El Vuelo 19: los cinco aviones de la Marina de EE.UU. que desaparecieron en el Triángulo de las Bermudas",
-    "video_script_prompt": "Escribe un guion narrativo de 2-3 minutos, en español, tono misterioso y serio, basado en hechos verificados sobre la desaparición del Vuelo 19 (5 de diciembre de 1945, Marina de EE.UU., Triángulo de las Bermudas, y el hidroavión de rescate PBM Mariner que también desapareció). Distingue claramente entre hechos confirmados y teorías no probadas (errores de navegación, mal tiempo, leyendas del Triángulo). No afirmes como ciertas teorías paranormales."
+    "video_subject": "Vuelo 19: cinco aviones militares desaparecieron sobre el Triángulo de las Bermudas en 1945."
   },
   {
     "id": "amelia_earhart",
-    "video_subject": "Amelia Earhart: la desaparición de la aviadora más famosa de la historia sobre el Pacífico",
-    "video_script_prompt": "Escribe un guion narrativo de 2-3 minutos, en español, tono misterioso y serio, basado en hechos verificados sobre la desaparición de Amelia Earhart y su navegante Fred Noonan en 1937 durante su vuelo alrededor del mundo, cerca de la isla Howland. Menciona las principales teorías investigadas (caída en el océano, isla Nikumaroro) como teorías, no como hechos confirmados."
+    "video_subject": "Amelia Earhart: la desaparición de la aviadora durante su vuelo alrededor del mundo."
   },
   {
     "id": "lars_mittank",
-    "video_subject": "El caso de Lars Mittank: el turista alemán que desapareció tras huir aterrorizado de un hospital en Bulgaria",
-    "video_script_prompt": "Escribe un guion narrativo de 2-3 minutos, en español, tono misterioso y serio, basado en hechos verificados y documentados públicamente sobre el caso de Lars Mittank (2014, Golden Sands, Bulgaria): la pelea previa, el ingreso hospitalario, las imágenes de cámaras de seguridad donde se le ve huyendo asustado, y que nunca fue encontrado. No inventes diálogos ni afirmes teorías como hechos."
+    "video_subject": "Lars Mittank: el turista que salió corriendo de un aeropuerto búlgaro y nunca volvió a aparecer."
   },
   {
     "id": "roanoke",
-    "video_subject": "La colonia perdida de Roanoke: 115 colonos que desaparecieron sin dejar rastro en 1587",
-    "video_script_prompt": "Escribe un guion narrativo de 2-3 minutos, en español, tono misterioso y serio, basado en hechos históricos verificados sobre la Colonia Perdida de Roanoke (1587), incluyendo la palabra 'CROATOAN' tallada encontrada por John White en 1590. Presenta las teorías (asimilación con nativos, enfermedad, ataque) como teorías históricas, nunca como hechos confirmados."
+    "video_subject": "La colonia perdida de Roanoke: qué ocurrió con los colonos que desaparecieron en el siglo XVI."
+  },
+  {
+    "id": "dyatlov_pass",
+    "video_subject": "El paso Dyatlov: qué sabemos realmente de la expedición que murió en los Urales en 1959."
+  },
+  {
+    "id": "somerton_man",
+    "video_subject": "El hombre de Somerton: el extraño cadáver hallado en una playa australiana y las incógnitas que dejó."
+  },
+  {
+    "id": "isdal_woman",
+    "video_subject": "La mujer de Isdal: las pistas, identidades falsas y preguntas de un caso sin resolver en Noruega."
+  },
+  {
+    "id": "mary_celeste",
+    "video_subject": "El Mary Celeste: el barco encontrado a la deriva sin su tripulación en 1872."
+  },
+  {
+    "id": "flannan_isles",
+    "video_subject": "El faro de las islas Flannan: la desaparición de los tres fareros en 1900."
+  },
+  {
+    "id": "yuba_county_five",
+    "video_subject": "Los cinco de Yuba County: la excursión que terminó en una de las desapariciones más desconcertantes de EE. UU."
+  },
+  {
+    "id": "sodder_children",
+    "video_subject": "Los niños Sodder: el incendio de 1945 y la familia que nunca dejó de buscar respuestas."
+  },
+  {
+    "id": "beaumont_children",
+    "video_subject": "Los niños Beaumont: la desaparición de tres hermanos en una playa australiana en 1966."
+  },
+  {
+    "id": "hinterkaifeck",
+    "video_subject": "Hinterkaifeck: el asesinato de una familia en una granja aislada de Baviera en 1922."
+  },
+  {
+    "id": "lead_masks",
+    "video_subject": "El caso de las máscaras de plomo: dos hombres hallados muertos en una colina de Brasil."
+  },
+  {
+    "id": "khamar_daban",
+    "video_subject": "Khamar-Daban: la tragedia de una expedición en Siberia y el testimonio de la única superviviente."
+  },
+  {
+    "id": "valentich",
+    "video_subject": "Frederick Valentich: el piloto que desapareció durante una comunicación inquietante en 1978."
+  },
+  {
+    "id": "oak_island",
+    "video_subject": "La isla del Roble: siglos de excavaciones en busca de un supuesto tesoro enterrado."
+  },
+  {
+    "id": "voynich",
+    "video_subject": "El manuscrito Voynich: el libro ilustrado que sigue desafiando a lingüistas e historiadores."
+  },
+  {
+    "id": "princes_tower",
+    "video_subject": "Los príncipes de la Torre: qué pudo ocurrir con los dos herederos desaparecidos de Inglaterra."
+  },
+  {
+    "id": "springfield_three",
+    "video_subject": "Las tres mujeres de Springfield: la desaparición de una madre y dos jóvenes en 1992."
+  },
+  {
+    "id": "asha_degree",
+    "video_subject": "Asha Degree: la niña que salió de casa de madrugada y desapareció en Carolina del Norte."
+  },
+  {
+    "id": "maura_murray",
+    "video_subject": "Maura Murray: la estudiante que desapareció tras un accidente de coche en una carretera rural."
+  },
+  {
+    "id": "brandon_swanson",
+    "video_subject": "Brandon Swanson: la llamada telefónica que terminó abruptamente durante una búsqueda nocturna."
+  },
+  {
+    "id": "max_headroom",
+    "video_subject": "La intrusión de Max Headroom: quién interrumpió las emisiones de televisión de Chicago en 1987."
+  },
+  {
+    "id": "wow_signal",
+    "video_subject": "La señal Wow!: la misteriosa transmisión de radio detectada desde el espacio en 1977."
+  },
+  {
+    "id": "phaistos_disc",
+    "video_subject": "El disco de Festos: el objeto arqueológico con símbolos que todavía no se han descifrado."
+  },
+  {
+    "id": "lost_dutchman",
+    "video_subject": "La mina del Holandés Perdido: el origen de la leyenda y las expediciones en las Superstition Mountains."
+  },
+  {
+    "id": "keddie_cabin",
+    "video_subject": "Los asesinatos de Keddie: el crimen de una cabaña en California y las preguntas que siguen abiertas."
+  },
+  {
+    "id": "bennington_triangle",
+    "video_subject": "El triángulo de Bennington: desapariciones, testimonios y leyendas de Vermont."
+  },
+  {
+    "id": "antarctic_dyatlov",
+    "video_subject": "El misterio de la expedición de Franklin: los barcos perdidos y las pistas halladas en el Ártico."
   }
 ]
