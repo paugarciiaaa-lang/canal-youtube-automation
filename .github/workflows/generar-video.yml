@@ -177,8 +177,9 @@ jobs:
           gemini_model_name = "gemini-3.8-flash"
           openrouter_api_key = "${OPENROUTER_API_KEY}"
           openrouter_base_url = "https://openrouter.ai/api/v1"
-          openrouter_model_name = "minimax/minimax-m3:free"
+          openrouter_model_name = "nvidia/nemotron-3-ultra-550b-a55b:free"
           subtitle_provider = "edge"
+          edge_tts_timeout = 90
           EOF
           chmod 600 config.toml
 
@@ -199,8 +200,23 @@ jobs:
             local config_key="$3"
 
             echo "Intentando generar con proveedor: $provider | modelo: $model"
-            sed -i "s/^llm_provider = .*/llm_provider = \"$provider\"/" config.toml
-            sed -i "s/^${config_key} = .*/${config_key} = \"$model\"/" config.toml
+            python3 - "$provider" "$model" "$config_key" <<'PY'
+          import json
+          import re
+          import sys
+          from pathlib import Path
+
+          provider, model, config_key = sys.argv[1:4]
+          path = Path("config.toml")
+          config = path.read_text(encoding="utf-8")
+          replacements = {"llm_provider": provider, config_key: model}
+          for key, value in replacements.items():
+              pattern = rf"(?m)^{re.escape(key)}\\s*=.*$"
+              config, count = re.subn(pattern, f"{key} = {json.dumps(value)}", config, count=1)
+              if count != 1:
+                  raise SystemExit(f"No se encontró exactamente una línea para {key}")
+          path.write_text(config, encoding="utf-8")
+          PY
 
             set +e
             timeout --signal=TERM --kill-after=60s 25m python3 cli.py \
@@ -237,7 +253,7 @@ jobs:
 
           # Se prueban primero los tres modelos Gemini; si falla el proveedor,
           # se pasa a OpenRouter, que es independiente de la infraestructura Google.
-          for model in gemini-3.8-flash gemini-3.5-flash-lite gemini-3.7-flash; do
+          for model in gemini-3.5-flash-lite gemini-3.7-flash gemini-3.8-flash; do
             if run_generation "gemini" "$model" "gemini_model_name"; then
               break
             fi
