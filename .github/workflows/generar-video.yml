@@ -211,7 +211,7 @@ jobs:
           config = path.read_text(encoding="utf-8")
           replacements = {"llm_provider": provider, config_key: model}
           for key, value in replacements.items():
-              pattern = rf"(?m)^{re.escape(key)}\\s*=.*$"
+              pattern = rf"(?m)^{re.escape(key)}\s*=.*$"
               config, count = re.subn(pattern, f"{key} = {json.dumps(value)}", config, count=1)
               if count != 1:
                   raise SystemExit(f"No se encontró exactamente una línea para {key}")
@@ -257,7 +257,7 @@ jobs:
             if run_generation "gemini" "$model" "gemini_model_name"; then
               break
             fi
-            if [ "$model" != "gemini-3.7-flash" ]; then
+            if [ "$model" != "gemini-3.8-flash" ]; then
               echo "Esperando 90 segundos antes del siguiente intento Gemini..."
               sleep 90
             fi
@@ -265,7 +265,7 @@ jobs:
 
           if [ "$success" != "true" ] && [ -n "$OPENROUTER_API_KEY" ]; then
             echo "Gemini no ha podido completar la generación. Activando OpenRouter..."
-            run_generation "openrouter" "minimax/minimax-m3:free" "openrouter_model_name" || true
+            run_generation "openrouter" "nvidia/nemotron-3-ultra-550b-a55b:free" "openrouter_model_name" || true
           fi
 
           if [ "$success" != "true" ]; then
