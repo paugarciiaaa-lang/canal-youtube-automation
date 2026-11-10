@@ -1,19 +1,15 @@
 #!/usr/bin/env python3
-"""Deterministic publication queue for Caspitas' five Shorts per documentary.
+"""Deterministic daily Shorts queue for Caspitas.
 
-Daily slots:
-  12:00 -> Short 1 from yesterday's documentary? No: from the documentary
-           published five? The queue uses the documentary's own publication
-           date and slot offset, so day 1 starts with Short 1.
-  14:00 -> Short 2 from the documentary published one day earlier.
-  16:00 -> Short 3 from two days earlier.
-  18:00 -> Short 4 from three days earlier.
-  20:00 -> Short 5 from four days earlier.
+For each documentary published on launch date D, publish:
+  D at 12:00: Short 1
+  D+1 at 12:00: Short 2 (and the new documentary's Short 1 at 14:00)
+  ...
+Once the queue is mature, five Shorts are published daily, oldest documentary
+first (12:00) through newest documentary last (20:00).
 
-A documentary generated on date D is therefore published as:
-  D+1 12:00: Short 1
-  D+2 12:00: Short 2? See slot mapping in due_for_slot().
-The daily schedule is intentionally explicit and testable.
+The long documentary is scheduled at 21:00. Shorts and their source videos must
+be generated in advance so the 12:00 Short can be published on the same date.
 """
 from __future__ import annotations
 
@@ -66,32 +62,44 @@ def add_video(data: dict[str, Any], video_id: str, publish_date: str, short_path
 
 
 def due_for_slot(data: dict[str, Any], run_date: str, slot: str) -> dict[str, Any] | None:
-    """Return the exact Short due at a given daily slot, or None if not ready.
+    """Return the Short due at this slot, preserving the user's ramp-up sequence.
 
-    The slot is the Short's sequence number. For example, on a given day:
-    12:00 publishes Short 1 from yesterday's documentary;
-    14:00 publishes Short 2 from the documentary from two days ago;
-    ...
-    20:00 publishes Short 5 from the documentary from five days ago.
-
-    This yields the requested ramp-up: day 1 has one Short, day 2 has two,
-    and from day 5 onward there are five Shorts per day.
+    Day 1: 12:00 -> documentary 1 / Short 1.
+    Day 2: 12:00 -> documentary 1 / Short 2; 14:00 -> documentary 2 / Short 1.
+    Day 3: 12:00 -> documentary 1 / Short 3; 14:00 -> documentary 2 / Short 2;
+           16:00 -> documentary 3 / Short 1.
+    After day 5, five daily slots continue in the same oldest-to-newest order.
     """
     if slot not in SLOTS:
         raise ValueError(f"Hora no válida: {slot}. Usa: {', '.join(SLOTS)}")
+    if not data["videos"]:
+        return None
+
     today = date.fromisoformat(run_date)
-    sequence = SLOTS.index(slot) + 1
-    documentary_date = (today - timedelta(days=sequence - 1)).isoformat()
+    first_date = min(date.fromisoformat(v["publish_date"]) for v in data["videos"])
+    day_number = (today - first_date).days + 1
+    if day_number < 1:
+        return None
+
+    slots_today = min(SHORTS_PER_VIDEO, day_number)
+    slot_index = SLOTS.index(slot)
+    if slot_index >= slots_today:
+        return None
+
+    age_days = slots_today - 1 - slot_index
+    documentary_date = (today - timedelta(days=age_days)).isoformat()
+    short_number = age_days + 1
+
     for video in data["videos"]:
         if video["publish_date"] != documentary_date:
             continue
-        short = video["shorts"][sequence - 1]
+        short = video["shorts"][short_number - 1]
         if short["status"] != "pending":
             return None
         return {
             "video_id": video["video_id"],
             "documentary_date": documentary_date,
-            "short_number": sequence,
+            "short_number": short_number,
             "path": short["path"],
             "slot": slot,
             "timezone": data.get("timezone", "Europe/Madrid"),
@@ -116,7 +124,7 @@ def main() -> None:
     parser.add_argument("--queue", type=Path, default=DEFAULT_QUEUE)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    init = sub.add_parser("init")
+    sub.add_parser("init")
     add = sub.add_parser("add")
     add.add_argument("--video-id", required=True)
     add.add_argument("--publish-date", required=True)
