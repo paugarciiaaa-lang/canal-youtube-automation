@@ -2,22 +2,27 @@ name: Generar vídeo del canal
 
 on:
   schedule:
-    # GitHub usa UTC: una ejecución para horario de verano y otra para invierno.
-    # El control posterior deja pasar solo la que corresponde a las 21:00 en Europe/Madrid.
     - cron: '0 19 * * *'
     - cron: '0 20 * * *'
   workflow_dispatch:
     inputs:
       video_subject:
-        description: 'Tema del vídeo (déjalo vacío para elegir uno aleatorio)'
+        description: 'Tema del vídeo (déjalo vacío para elegir uno sin repetir hasta agotar la lista)'
         required: false
         type: string
         default: ''
 
+concurrency:
+  group: caspitas-generacion
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 75
     steps:
       - name: Comprobar que son las 21:00 en España
         id: local_time
@@ -29,30 +34,40 @@ jobs:
             echo "Esta ejecución programada no corresponde a las 21:00 en España; se omite."
           fi
 
-      - name: Clonar tu repositorio (para leer data/topics.json)
+      - name: Descargar el repositorio
         if: steps.local_time.outputs.run_now == 'true'
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Instalar Python
+      - name: Fijar versión estable de MoneyPrinterTurbo
+        if: steps.local_time.outputs.run_now == 'true'
+        run: git clone --depth 1 --branch v1.3.10 https://github.com/harry0703/MoneyPrinterTurbo.git mpt
+
+      - name: Instalar Python con caché de dependencias
         if: steps.local_time.outputs.run_now == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: pip
+          cache-dependency-path: mpt/requirements.txt
 
-      - name: Instalar ffmpeg
+      - name: Instalar FFmpeg
         if: steps.local_time.outputs.run_now == 'true'
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
-
-      - name: Clonar MoneyPrinterTurbo
-        if: steps.local_time.outputs.run_now == 'true'
-        run: git clone --depth 1 https://github.com/harry0703/MoneyPrinterTurbo.git mpt
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          ffmpeg -version | head -n 1
+          ffprobe -version | head -n 1
 
       - name: Instalar dependencias de MoneyPrinterTurbo
         if: steps.local_time.outputs.run_now == 'true'
         working-directory: mpt
-        run: pip install -r requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Elegir tema manual o aleatorio
+      - name: Elegir tema sin repetir innecesariamente
         if: steps.local_time.outputs.run_now == 'true'
         env:
           USER_TOPIC: ${{ github.event.inputs.video_subject }}
@@ -61,43 +76,65 @@ jobs:
           import json
           import os
           import random
+          from pathlib import Path
 
           user_topic = (os.environ.get("USER_TOPIC") or "").strip()
+          selected_id = ""
+
           if user_topic:
               subject = user_topic
-              print(f"Tema elegido manualmente: {subject}")
+              print("Se utilizará el tema introducido manualmente.")
           else:
-              with open("data/topics.json", encoding="utf-8") as f:
-                  topics = json.load(f)
-              selected = random.choice(topics)
+              topics = json.loads(Path("data/topics.json").read_text(encoding="utf-8"))
+              if not topics:
+                  raise SystemExit("data/topics.json no contiene temas.")
+
+              history_path = Path("data/topic_history.json")
+              history = json.loads(history_path.read_text(encoding="utf-8")) if history_path.exists() else {"used_ids": []}
+              used_ids = set(history.get("used_ids", []))
+              available = [item for item in topics if item["id"] not in used_ids]
+
+              if not available:
+                  print("Se han utilizado todos los temas; comienza un nuevo ciclo.")
+                  available = topics
+
+              selected = random.choice(available)
+              selected_id = selected["id"]
               subject = selected["video_subject"]
-              print(f"Tema elegido al azar: {subject}")
+              print(f"Tema seleccionado: {subject}")
 
           prompt = """
           Escribe un guion documental de entre 1.500 y 1.800 palabras, pensado para
           una narración de aproximadamente 10 a 15 minutos en español de España.
-          Divide el guion en 10 párrafos o bloques narrativos sustanciales.
-          Tema: el indicado en el título.
+          Divide el guion en 10 bloques narrativos sustanciales, con transiciones
+          naturales y sin repetir información para alargar.
 
-          Estructura:
-          1. Gancho inicial potente durante los primeros 20-30 segundos.
-          2. Contexto y presentación de las personas, lugares y fechas relevantes.
-          3. Relato cronológico y detallado de los acontecimientos.
-          4. Investigación, pruebas, testimonios y datos documentados.
-          5. Principales hipótesis y explicaciones alternativas.
-          6. Qué se sabe, qué no se sabe y qué sigue sin explicación.
-          7. Conclusión que cierre la historia y deje una pregunta al espectador.
+          ESTRUCTURA:
+          1. Gancho narrativo potente durante los primeros 20-30 segundos.
+          2. Contexto: personas, lugares, fechas y situación histórica.
+          3. Relato cronológico, claro y detallado de los acontecimientos.
+          4. Investigación: pruebas, documentos, testimonios y datos contrastables.
+          5. Hipótesis principales, indicando quién las propuso y en qué se basan.
+          6. Contradicciones, errores conocidos y explicaciones alternativas.
+          7. Qué está confirmado, qué es discutido y qué se desconoce.
+          8. Consecuencias del caso y estado actual de la investigación.
+          9. Conclusión narrativa, sin presentar especulaciones como certezas.
+          10. Cierre memorable y una pregunta concreta para fomentar comentarios.
 
-          Reglas: tono serio, inmersivo y misterioso, propio del canal Caspitas. No inventes hechos, nombres, citas, documentos ni diálogos.
-          Distingue claramente los hechos verificados de las teorías y especulaciones.
-          No repitas ideas para alargar el texto. Evita introducciones genéricas y
-          mantén el interés narrativo durante todo el vídeo.
+          REGLAS EDITORIALES DE CASPITAS:
+          - Español natural de España, tono documental, serio, inmersivo y misterioso.
+          - No inventes hechos, fechas, nombres, citas, documentos ni diálogos.
+          - No presentes leyendas, teorías o rumores como hechos demostrados.
+          - Cuando haya versiones contradictorias, explica brevemente la diferencia.
+          - Evita afirmaciones sensacionalistas que no estén respaldadas.
+          - No incluyas instrucciones visuales, etiquetas de cámara ni notas para el editor.
+          - No escribas títulos de sección repetitivos; el texto debe sonar fluido al narrarlo.
+          - Empieza directamente con el gancho, sin saludos ni presentación genérica.
           """
 
-          with open("topic_subject.txt", "w", encoding="utf-8") as f:
-              f.write(subject)
-          with open("topic_prompt.txt", "w", encoding="utf-8") as f:
-              f.write(prompt)
+          Path("topic_subject.txt").write_text(subject, encoding="utf-8")
+          Path("topic_prompt.txt").write_text(prompt, encoding="utf-8")
+          Path("selected_topic_id.txt").write_text(selected_id, encoding="utf-8")
           PY
 
       - name: Verificar secretos necesarios
@@ -116,13 +153,14 @@ jobs:
           fi
           echo "Los secretos necesarios están configurados (valores ocultos)."
 
-      - name: Crear config.toml con las claves (no se sube al repositorio)
+      - name: Crear configuración privada
         if: steps.local_time.outputs.run_now == 'true'
         working-directory: mpt
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
         run: |
+          umask 077
           cat > config.toml <<EOF
           [app]
           video_source = "pixabay"
@@ -132,27 +170,136 @@ jobs:
           gemini_model_name = "gemini-3.8-flash"
           subtitle_provider = "edge"
           EOF
+          chmod 600 config.toml
 
-      - name: Generar vídeo horizontal largo
+      - name: Generar documental con reintentos y modelo alternativo
         if: steps.local_time.outputs.run_now == 'true'
         working-directory: mpt
         run: |
-          python3 cli.py \
-            --video-subject "$(cat ../topic_subject.txt)" \
-            --video-script-prompt "$(cat ../topic_prompt.txt)" \
-            --video-source pixabay \
-            --video-language es-ES \
-            --voice-name "gemini:Algenib" \
-            --paragraph-number 10 \
-            --video-aspect "16:9" \
-            --video-fit-mode "cover" \
-            --match-materials-to-script \
-            --stop-at video
+          set -euo pipefail
+          success=false
 
-      - name: Subir el vídeo generado como resultado descargable
+          for model in gemini-3.8-flash gemini-3.7-flash; do
+            echo "Intentando generar con el modelo: $model"
+            sed -i "s/^gemini_model_name = .*/gemini_model_name = \"$model\"/" config.toml
+
+            set +e
+            timeout --signal=TERM --kill-after=60s 25m python3 cli.py \
+              --video-subject "$(cat ../topic_subject.txt)" \
+              --video-script-prompt "$(cat ../topic_prompt.txt)" \
+              --video-source pixabay \
+              --video-language es-ES \
+              --voice-name "es-ES-AlvaroNeural" \
+              --voice-rate 0.95 \
+              --paragraph-number 10 \
+              --video-aspect "16:9" \
+              --video-fit-mode "cover" \
+              --video-clip-duration 6 \
+              --video-transition-mode "fade-in" \
+              --bgm-type random \
+              --bgm-volume 0.12 \
+              --n-threads 2 \
+              --match-materials-to-script \
+              --stop-at video 2>&1 | tee ../generation.log
+            status=${PIPESTATUS[0]}
+            set -e
+
+            if [ "$status" -eq 0 ]; then
+              echo "Generación completada con $model."
+              success=true
+              break
+            fi
+
+            if grep -Eqi 'API_KEY_INVALID|PERMISSION_DENIED|\b(401|403)\b|model.*not found' ../generation.log; then
+              echo "::error::Error de autenticación o configuración del proveedor; no se repetirán solicitudes."
+              exit "$status"
+            fi
+
+            echo "El intento con $model ha fallado (código $status)."
+            if [ "$model" = "gemini-3.8-flash" ]; then
+              echo "Esperando 90 segundos antes de probar el modelo alternativo..."
+              sleep 90
+            fi
+          done
+
+          if [ "$success" != "true" ]; then
+            echo "::error::No se pudo generar el documental con los modelos disponibles."
+            exit 1
+          fi
+
+      - name: Validar duración y preparar el vídeo final
         if: steps.local_time.outputs.run_now == 'true'
+        working-directory: mpt
+        run: |
+          set -euo pipefail
+          video="$(find storage/tasks -type f -name '*.mp4' -size +1M -printf '%T@ %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+          if [ -z "$video" ] || [ ! -f "$video" ]; then
+            echo "::error::MoneyPrinterTurbo terminó sin producir un MP4 válido."
+            exit 1
+          fi
+
+          duration="$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$video")"
+          python3 - "$duration" <<'PY'
+          import sys
+          seconds = float(sys.argv[1])
+          print(f"Duración detectada: {seconds / 60:.1f} minutos")
+          if seconds < 480:
+              raise SystemExit("El vídeo dura menos de 8 minutos; no se considera listo para publicar.")
+          if not 540 <= seconds <= 900:
+              print("AVISO: la duración queda fuera del objetivo de 9-15 minutos.")
+          PY
+
+          mkdir -p ../output
+          final="../output/Caspitas-$(TZ=Europe/Madrid date +%Y-%m-%d)-$GITHUB_RUN_NUMBER.mp4"
+          cp "$video" "$final"
+          printf '%s\n' "$duration" > ../output/duration_seconds.txt
+          printf '%s\n' "$(cat ../topic_subject.txt)" > ../output/tema.txt
+          printf '%s\n' "$(grep '^gemini_model_name' config.toml | cut -d'"' -f2)" > ../output/modelo.txt
+          echo "Vídeo validado y preparado: $final"
+
+      - name: Guardar tema en el historial para evitar repeticiones
+        if: steps.local_time.outputs.run_now == 'true' && success()
+        run: |
+          topic_id="$(cat selected_topic_id.txt)"
+          if [ -n "$topic_id" ]; then
+            python3 - "$topic_id" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          path = Path("data/topic_history.json")
+          data = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"used_ids": []}
+          used = data.get("used_ids", [])
+          if sys.argv[1] not in used:
+              used.append(sys.argv[1])
+          data["used_ids"] = used
+          path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          PY
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add data/topic_history.json
+            if ! git diff --cached --quiet; then
+              git commit -m "Actualizar historial de temas de Caspitas"
+              git push
+            fi
+          fi
+
+      - name: Resumen de la generación
+        if: steps.local_time.outputs.run_now == 'true' && success()
+        run: |
+          echo "## Caspitas: documental generado" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Tema: $(cat output/tema.txt)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Modelo de guion: $(cat output/modelo.txt)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Duración: $(python3 -c 'print(round(float(open("output/duration_seconds.txt").read())/60, 1))') minutos" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Voz: es-ES-AlvaroNeural (Edge TTS)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Fuente visual: Pixabay" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Publicación automática: todavía desactivada" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Subir vídeo y datos como artefacto descargable
+        if: steps.local_time.outputs.run_now == 'true' && success()
         uses: actions/upload-artifact@v4
         with:
-          name: video-generado-${{ github.run_number }}
-          path: mpt/storage/tasks/**/*.mp4
+          name: caspitas-documental-${{ github.run_number }}
+          path: output/*
+          if-no-files-found: error
           retention-days: 14
