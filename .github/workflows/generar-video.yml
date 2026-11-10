@@ -179,9 +179,11 @@ jobs:
           set -euo pipefail
           success=false
 
-          for model in gemini-3.8-flash gemini-3.7-flash; do
-            echo "Intentando generar con el modelo: $model"
+          # Orden de respaldo: modelo principal, variante ligera de mayor capacidad y modelo anterior.
+          for model in gemini-3.8-flash gemini-3.5-flash-lite gemini-3.7-flash; do
+            echo "Configurando modelo Gemini: $model"
             sed -i "s/^gemini_model_name = .*/gemini_model_name = \"$model\"/" config.toml
+            grep '^gemini_model_name' config.toml
 
             set +e
             timeout --signal=TERM --kill-after=60s 25m python3 cli.py \
@@ -216,9 +218,9 @@ jobs:
             fi
 
             echo "El intento con $model ha fallado (código $status)."
-            if [ "$model" = "gemini-3.8-flash" ]; then
-              echo "Esperando 90 segundos antes de probar el modelo alternativo..."
-              sleep 90
+            if [ "$model" != "gemini-3.7-flash" ]; then
+              echo "Esperando 120 segundos antes de cambiar de modelo..."
+              sleep 120
             fi
           done
 
