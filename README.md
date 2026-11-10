@@ -19,10 +19,12 @@ El workflow `.github/workflows/generar-video.yml`:
 - Fija MoneyPrinterTurbo en la versión `v1.3.10` para evitar cambios inesperados de `main`.
 - Usa caché de dependencias Python.
 - Genera guiones en español de España con una estructura documental y una guía editorial que separa hechos, hipótesis y especulación.
-- Intenta Gemini 3.8 Flash y recurre a Gemini 3.7 Flash si el primer modelo falla.
-- Aplica límite de tiempo a cada intento y registra el resultado.
+- Intenta Gemini 3.5 Flash Lite y después Gemini 3.8 Flash; si ambos fallan o generan un vídeo demasiado corto, recurre a OpenRouter.
+- Comprueba el MP4 y su duración tras cada intento antes de darlo por válido, evitando aceptar vídeos incompletos o de menos de 9 minutos.
+- Da hasta 45 minutos a cada intento y hasta 180 minutos al trabajo completo, con registro de errores.
 - Usa Pixabay para materiales visuales y la voz española masculina `es-ES-AlvaroNeural` mediante Edge TTS.
-- Comprueba que el MP4 exista y que dure al menos 8 minutos; avisa si se aleja del objetivo de 9-15 minutos.
+- Aumenta el tiempo límite de concatenación de FFmpeg y permite procesar dos clips simultáneamente para reducir el cuello de botella del montaje.
+- Comprueba que el MP4 exista y dure al menos 9 minutos; el objetivo editorial es de 10-15 minutos.
 - Guarda el vídeo y los datos básicos como artefacto de GitHub Actions durante 14 días.
 - Incluye un catálogo inicial de 31 temas y mantiene un historial para evitar repetirlos hasta agotar la lista.
 
