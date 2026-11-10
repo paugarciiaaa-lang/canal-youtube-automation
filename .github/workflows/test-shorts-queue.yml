@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - "scripts/shorts_queue.py"
+      - "data/topics.json"
       - "tests/**"
       - ".github/workflows/test-shorts-queue.yml"
   pull_request:
