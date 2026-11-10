@@ -22,7 +22,7 @@ permissions:
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 120
     steps:
       - name: Comprobar que son las 21:00 en España
         id: local_time
@@ -142,6 +142,7 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
           if [ -z "$GEMINI_API_KEY" ]; then
             echo "::error::Falta el secreto GEMINI_API_KEY en GitHub Actions."
@@ -151,6 +152,11 @@ jobs:
             echo "::error::Falta el secreto PIXABAY_API_KEY en GitHub Actions."
             exit 1
           fi
+          if [ -n "$OPENROUTER_API_KEY" ]; then
+            echo "OpenRouter está configurado como proveedor alternativo."
+          else
+            echo "Aviso: OPENROUTER_API_KEY no está configurado; solo se probará Gemini."
+          fi
           echo "Los secretos necesarios están configurados (valores ocultos)."
 
       - name: Crear configuración privada
@@ -159,6 +165,7 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
           umask 077
           cat > config.toml <<EOF
@@ -168,22 +175,32 @@ jobs:
           llm_provider = "gemini"
           gemini_api_key = "${GEMINI_API_KEY}"
           gemini_model_name = "gemini-3.8-flash"
+          openrouter_api_key = "${OPENROUTER_API_KEY}"
+          openrouter_base_url = "https://openrouter.ai/api/v1"
+          openrouter_model_name = "minimax/minimax-m3:free"
           subtitle_provider = "edge"
           EOF
           chmod 600 config.toml
 
-      - name: Generar documental con reintentos y modelo alternativo
+      - name: Generar documental con Gemini y respaldo OpenRouter
         if: steps.local_time.outputs.run_now == 'true'
         working-directory: mpt
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
           set -euo pipefail
           success=false
+          selected_provider=""
+          selected_model=""
 
-          # Orden de respaldo: modelo principal, variante ligera de mayor capacidad y modelo anterior.
-          for model in gemini-3.8-flash gemini-3.5-flash-lite gemini-3.7-flash; do
-            echo "Configurando modelo Gemini: $model"
-            sed -i "s/^gemini_model_name = .*/gemini_model_name = \"$model\"/" config.toml
-            grep '^gemini_model_name' config.toml
+          run_generation() {
+            local provider="$1"
+            local model="$2"
+            local config_key="$3"
+
+            echo "Intentando generar con proveedor: $provider | modelo: $model"
+            sed -i "s/^llm_provider = .*/llm_provider = \"$provider\"/" config.toml
+            sed -i "s/^\${config_key} = .*/\${config_key} = \"$model\"/" config.toml
 
             set +e
             timeout --signal=TERM --kill-after=60s 25m python3 cli.py \
@@ -203,31 +220,45 @@ jobs:
               --n-threads 2 \
               --match-materials-to-script \
               --stop-at video 2>&1 | tee ../generation.log
-            status=${PIPESTATUS[0]}
+            local status=${PIPESTATUS[0]}
             set -e
 
             if [ "$status" -eq 0 ]; then
-              echo "Generación completada con $model."
+              echo "Generación completada con $provider ($model)."
+              selected_provider="$provider"
+              selected_model="$model"
               success=true
+              return 0
+            fi
+
+            echo "El intento con $provider ($model) ha fallado (código $status)."
+            return "$status"
+          }
+
+          # Se prueban primero los tres modelos Gemini; si falla el proveedor,
+          # se pasa a OpenRouter, que es independiente de la infraestructura Google.
+          for model in gemini-3.8-flash gemini-3.5-flash-lite gemini-3.7-flash; do
+            if run_generation "gemini" "$model" "gemini_model_name"; then
               break
             fi
-
-            if grep -Eqi 'API_KEY_INVALID|PERMISSION_DENIED|\b(401|403)\b|model.*not found' ../generation.log; then
-              echo "::error::Error de autenticación o configuración del proveedor; no se repetirán solicitudes."
-              exit "$status"
-            fi
-
-            echo "El intento con $model ha fallado (código $status)."
             if [ "$model" != "gemini-3.7-flash" ]; then
-              echo "Esperando 120 segundos antes de cambiar de modelo..."
-              sleep 120
+              echo "Esperando 90 segundos antes del siguiente intento Gemini..."
+              sleep 90
             fi
           done
 
+          if [ "$success" != "true" ] && [ -n "$OPENROUTER_API_KEY" ]; then
+            echo "Gemini no ha podido completar la generación. Activando OpenRouter..."
+            run_generation "openrouter" "minimax/minimax-m3:free" "openrouter_model_name" || true
+          fi
+
           if [ "$success" != "true" ]; then
-            echo "::error::No se pudo generar el documental con los modelos disponibles."
+            echo "::error::No se pudo generar el documental con Gemini ni con OpenRouter. Revisa generation.log."
             exit 1
           fi
+
+          printf '%s\n' "$selected_provider" > ../selected_provider.txt
+          printf '%s\n' "$selected_model" > ../selected_model.txt
 
       - name: Validar duración y preparar el vídeo final
         if: steps.local_time.outputs.run_now == 'true'
@@ -256,7 +287,7 @@ jobs:
           cp "$video" "$final"
           printf '%s\n' "$duration" > ../output/duration_seconds.txt
           printf '%s\n' "$(cat ../topic_subject.txt)" > ../output/tema.txt
-          printf '%s\n' "$(grep '^gemini_model_name' config.toml | cut -d'"' -f2)" > ../output/modelo.txt
+          printf '%s | %s\n' "$(cat ../selected_provider.txt)" "$(cat ../selected_model.txt)" > ../output/modelo.txt
           echo "Vídeo validado y preparado: $final"
 
       - name: Guardar tema en el historial para evitar repeticiones
@@ -295,7 +326,7 @@ jobs:
         run: |
           echo "## Caspitas: documental generado" >> "$GITHUB_STEP_SUMMARY"
           echo "- Tema: $(cat output/tema.txt)" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Modelo de guion: $(cat output/modelo.txt)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Proveedor/modelo de guion: $(cat output/modelo.txt)" >> "$GITHUB_STEP_SUMMARY"
           echo "- Duración: $(python3 -c 'print(round(float(open("output/duration_seconds.txt").read())/60, 1))') minutos" >> "$GITHUB_STEP_SUMMARY"
           echo "- Voz: es-ES-AlvaroNeural (Edge TTS)" >> "$GITHUB_STEP_SUMMARY"
           echo "- Fuente visual: Pixabay" >> "$GITHUB_STEP_SUMMARY"
