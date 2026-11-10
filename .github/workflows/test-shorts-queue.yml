@@ -1,0 +1,25 @@
+name: Test Shorts queue
+
+on:
+  push:
+    paths:
+      - "scripts/shorts_queue.py"
+      - "tests/**"
+      - ".github/workflows/test-shorts-queue.yml"
+  pull_request:
+    paths:
+      - "scripts/shorts_queue.py"
+      - "tests/**"
+      - ".github/workflows/test-shorts-queue.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run queue tests
+        run: python -m unittest discover -s tests -v
