@@ -269,11 +269,15 @@ jobs:
 
           path = Path("data/topic_history.json")
           data = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"used_ids": []}
+          topics = json.loads(Path("data/topics.json").read_text(encoding="utf-8"))
+          all_ids = {item["id"] for item in topics}
           used = data.get("used_ids", [])
+          if all_ids and all_ids.issubset(set(used)):
+              used = []
           if sys.argv[1] not in used:
               used.append(sys.argv[1])
           data["used_ids"] = used
-          path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
           PY
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
