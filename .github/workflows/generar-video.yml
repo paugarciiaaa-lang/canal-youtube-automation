@@ -200,7 +200,7 @@ jobs:
 
             echo "Intentando generar con proveedor: $provider | modelo: $model"
             sed -i "s/^llm_provider = .*/llm_provider = \"$provider\"/" config.toml
-            sed -i "s/^\${config_key} = .*/\${config_key} = \"$model\"/" config.toml
+            sed -i "s/^${config_key} = .*/${config_key} = \"$model\"/" config.toml
 
             set +e
             timeout --signal=TERM --kill-after=60s 25m python3 cli.py \
