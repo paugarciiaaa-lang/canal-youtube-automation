@@ -22,7 +22,7 @@ permissions:
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
     steps:
       - name: Comprobar que son las 21:00 en España
         id: local_time
@@ -104,10 +104,11 @@ jobs:
               print(f"Tema seleccionado: {subject}")
 
           prompt = """
-          Escribe un guion documental de entre 1.500 y 1.800 palabras, pensado para
-          una narración de aproximadamente 10 a 15 minutos en español de España.
-          Divide el guion en 10 bloques narrativos sustanciales, con transiciones
-          naturales y sin repetir información para alargar.
+          Escribe un guion documental de entre 1.900 y 2.200 palabras, pensado para
+          una narración de aproximadamente 12 a 15 minutos en español de España.
+          La extensión es un requisito: no entregues un resumen ni un texto breve.
+          Desarrolla los 10 bloques con información sustancial, transiciones naturales
+          y sin repetir datos ni inventar contenido para alcanzar la longitud.
 
           ESTRUCTURA:
           1. Gancho narrativo potente durante los primeros 20-30 segundos.
@@ -180,6 +181,9 @@ jobs:
           openrouter_model_name = "nvidia/nemotron-3-ultra-550b-a55b:free"
           subtitle_provider = "edge"
           edge_tts_timeout = 90
+          ffmpeg_concat_timeout_seconds = 5400
+          material_concurrency = 2
+          video_clip_concurrency = 2
           EOF
           chmod 600 config.toml
 
@@ -218,8 +222,13 @@ jobs:
           path.write_text(config, encoding="utf-8")
           PY
 
+            # Cada proveedor parte de un directorio limpio para no confundir un MP4
+            # incompleto de un intento anterior con el resultado del intento actual.
+            mkdir -p storage/tasks
+            find storage/tasks -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+
             set +e
-            timeout --signal=TERM --kill-after=60s 25m python3 cli.py \
+            timeout --signal=TERM --kill-after=60s 45m python3 cli.py \
               --video-subject "$(cat ../topic_subject.txt)" \
               --video-script-prompt "$(cat ../topic_prompt.txt)" \
               --video-source pixabay \
@@ -239,12 +248,32 @@ jobs:
             local status=${PIPESTATUS[0]}
             set -e
 
+            # No basta con que MoneyPrinterTurbo devuelva código 0: también
+            # exigimos un MP4 nuevo y con duración mínima antes de aceptar el modelo.
             if [ "$status" -eq 0 ]; then
-              echo "Generación completada con $provider ($model)."
-              selected_provider="$provider"
-              selected_model="$model"
-              success=true
-              return 0
+              video="$(find storage/tasks -type f -name '*.mp4' -size +1M -printf '%T@ %p\\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+              if [ -z "$video" ] || [ ! -f "$video" ]; then
+                echo "El proveedor terminó sin crear un MP4 válido."
+                status=3
+              else
+                duration="$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$video")"
+                if python3 - "$duration" <<'PY'
+          import sys
+          seconds = float(sys.argv[1])
+          print(f"Duración del intento: {seconds / 60:.1f} minutos")
+          if seconds < 540:
+              raise SystemExit("Duración inferior a 9 minutos; se probará el siguiente proveedor/modelo.")
+          PY
+                then
+                  echo "Generación válida completada con $provider ($model)."
+                  selected_provider="$provider"
+                  selected_model="$model"
+                  success=true
+                  return 0
+                else
+                  status=4
+                fi
+              fi
             fi
 
             echo "El intento con $provider ($model) ha fallado (código $status)."
@@ -253,13 +282,13 @@ jobs:
 
           # Se prueban primero los tres modelos Gemini; si falla el proveedor,
           # se pasa a OpenRouter, que es independiente de la infraestructura Google.
-          for model in gemini-3.5-flash-lite gemini-3.7-flash gemini-3.8-flash; do
+          for model in gemini-3.5-flash-lite gemini-3.8-flash; do
             if run_generation "gemini" "$model" "gemini_model_name"; then
               break
             fi
             if [ "$model" != "gemini-3.8-flash" ]; then
-              echo "Esperando 90 segundos antes del siguiente intento Gemini..."
-              sleep 90
+              echo "Esperando 45 segundos antes del siguiente intento Gemini..."
+              sleep 45
             fi
           done
 
@@ -292,10 +321,10 @@ jobs:
           import sys
           seconds = float(sys.argv[1])
           print(f"Duración detectada: {seconds / 60:.1f} minutos")
-          if seconds < 480:
-              raise SystemExit("El vídeo dura menos de 8 minutos; no se considera listo para publicar.")
-          if not 540 <= seconds <= 900:
-              print("AVISO: la duración queda fuera del objetivo de 9-15 minutos.")
+          if seconds < 540:
+              raise SystemExit("El vídeo dura menos de 9 minutos; no se considera listo para publicar.")
+          if not 600 <= seconds <= 900:
+              print("AVISO: la duración queda fuera del objetivo de 10-15 minutos.")
           PY
 
           mkdir -p ../output
