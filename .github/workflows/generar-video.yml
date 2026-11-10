@@ -197,6 +197,7 @@ jobs:
           success=false
           selected_provider=""
           selected_model=""
+          : > ../generation.log
 
           run_generation() {
             local provider="$1"
@@ -244,7 +245,7 @@ jobs:
               --bgm-volume 0.12 \
               --n-threads 2 \
               --match-materials-to-script \
-              --stop-at video 2>&1 | tee ../generation.log
+              --stop-at video 2>&1 | tee -a ../generation.log
             local status=${PIPESTATUS[0]}
             set -e
 
