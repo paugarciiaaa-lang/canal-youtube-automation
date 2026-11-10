@@ -24,7 +24,7 @@ El workflow `.github/workflows/generar-video.yml`:
 - Usa Pixabay para materiales visuales y la voz española masculina `es-ES-AlvaroNeural` mediante Edge TTS.
 - Comprueba que el MP4 exista y que dure al menos 8 minutos; avisa si se aleja del objetivo de 9-15 minutos.
 - Guarda el vídeo y los datos básicos como artefacto de GitHub Actions durante 14 días.
-- Mantiene un historial de temas utilizados para evitar repetirlos hasta agotar la lista.
+- Incluye un catálogo inicial de 31 temas y mantiene un historial para evitar repetirlos hasta agotar la lista.
 
 Los secretos requeridos se configuran en GitHub Actions como `GEMINI_API_KEY` y `PIXABAY_API_KEY`. No deben guardarse en el repositorio ni compartirse en conversaciones.
 
