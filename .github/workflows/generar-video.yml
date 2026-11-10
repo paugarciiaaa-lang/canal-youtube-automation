@@ -251,12 +251,12 @@ jobs:
             # No basta con que MoneyPrinterTurbo devuelva código 0: también
             # exigimos un MP4 nuevo y con duración mínima antes de aceptar el modelo.
             if [ "$status" -eq 0 ]; then
-              video="$(find storage/tasks -type f -name '*.mp4' -size +1M -printf '%T@ %p\\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+              video="$(find storage/tasks -type f -name '*.mp4' -size +1M -printf '%T@ %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
               if [ -z "$video" ] || [ ! -f "$video" ]; then
                 echo "El proveedor terminó sin crear un MP4 válido."
                 status=3
               else
-                duration="$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$video")"
+                duration="$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$video" 2>/dev/null || echo 0)"
                 if python3 - "$duration" <<'PY'
           import sys
           seconds = float(sys.argv[1])
@@ -280,7 +280,7 @@ jobs:
             return "$status"
           }
 
-          # Se prueban primero los tres modelos Gemini; si falla el proveedor,
+          # Se prueban dos modelos Gemini; si fallan o generan un vídeo demasiado corto,
           # se pasa a OpenRouter, que es independiente de la infraestructura Google.
           for model in gemini-3.5-flash-lite gemini-3.8-flash; do
             if run_generation "gemini" "$model" "gemini_model_name"; then
