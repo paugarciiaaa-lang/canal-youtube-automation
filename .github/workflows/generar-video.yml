@@ -336,7 +336,7 @@ jobs:
         working-directory: mpt
         run: |
           set -euo pipefail
-          video="$(find storage/tasks -type f -name '*.mp4' -size +1M -printf '%T@ %p\\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+          video="$(find storage/tasks -type f -name '*.mp4' -size +1M -printf '%T@ %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
           if [ -z "$video" ] || [ ! -f "$video" ]; then
             echo "::error::No hay un MP4 que pueda pasar el control de calidad."
             exit 1
@@ -511,7 +511,7 @@ jobs:
           echo "- Subtítulos: $(python3 -c 'import json; print(json.load(open("output/qa_report.json"))["subtitle_cues"])') cues revisados; comprobar también la escucha final" >> "$GITHUB_STEP_SUMMARY"
           echo "- FFmpeg: preset veryfast y CRF 23; subtítulo palabra a palabra conservado sin animación spring costosa" >> "$GITHUB_STEP_SUMMARY"
           echo "- Voz: es-ES-AlvaroNeural (Edge TTS)" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Subtítulos: palabra a palabra, animación pop-spring, amarillo con borde y fondo oscuro" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Subtítulos: palabra a palabra, sin animación spring, amarillo con borde y fondo oscuro" >> "$GITHUB_STEP_SUMMARY"
           echo "- Música: desactivada temporalmente; no se usará música aleatoria sin licencia verificada" >> "$GITHUB_STEP_SUMMARY"
           echo "- Fuentes: el guion solicita referencias; deben comprobarse manualmente, no existe verificación automática independiente." >> "$GITHUB_STEP_SUMMARY"
           echo "- Voz Edge TTS: derechos comerciales no confirmados; no considerar monetización verificada." >> "$GITHUB_STEP_SUMMARY"
