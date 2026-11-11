@@ -1,0 +1,46 @@
+name: Vista previa de pizarra animada
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render-whiteboard-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar Pillow
+        run: python -m pip install --upgrade pip pillow
+
+      - name: Instalar FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Dibujar escenas de pizarra
+        run: python scripts/whiteboard_preview.py --output-dir whiteboard_frames
+
+      - name: Montar vídeo MP4
+        run: |
+          ffmpeg -y -framerate 18 -i whiteboard_frames/frame_%05d.png \
+            -c:v libx264 -preset veryfast -crf 20 -pix_fmt yuv420p \
+            -movflags +faststart output/caspitas-whiteboard-preview.mp4
+        shell: bash
+
+      - name: Guardar vista previa
+        uses: actions/upload-artifact@v4
+        with:
+          name: caspitas-whiteboard-preview
+          path: output/caspitas-whiteboard-preview.mp4
+          if-no-files-found: error
+          retention-days: 7
