@@ -130,6 +130,18 @@ jobs:
           - Español natural de España, tono documental, serio, inmersivo y misterioso.
           - No inventes hechos, fechas, nombres, citas, documentos ni diálogos.
           - No presentes leyendas, teorías o rumores como hechos demostrados.
+          - El documental debe aportar investigación, contexto, análisis propio y valor educativo; no ser un resumen genérico de IA.
+          - Prioriza documentos originales, archivos, registros oficiales, informes, resoluciones judiciales, publicaciones académicas, entrevistas y testimonios identificables.
+          - No inventes fuentes, enlaces ni citas. Contrasta afirmaciones importantes y separa hechos, hipótesis atribuidas y aspectos desconocidos.
+          - Añade al final una sección FUENTES Y REFERENCIAS con autor u organismo, fecha y URL concreta cuando se conozca. Si no puedes verificarlas, indica REFERENCIAS PENDIENTES DE VERIFICACIÓN.
+          - Compara hipótesis, explica contradicciones y evalúa la solidez de las pruebas; termina con conclusiones razonadas.
+          - Cada episodio debe tener historia, estructura, datos y valor propios; evita vídeos intercambiables y guiones masivos basados en una plantilla.
+          - Propón mapas, cronologías, documentos e ilustraciones whiteboard específicos para el caso; evita repetir continuamente los mismos clips de stock.
+          - Registra URL, autor, fecha de descarga y licencia de cada recurso visual. Pixabay permite determinados usos comerciales, pero revisa restricciones y derechos de terceros.
+          - No añadas música por defecto. Solo se incorporará una pista con licencia comercial documentada.
+          - La voz Edge TTS es-ES-AlvaroNeural NO tiene autorización comercial confirmada por defecto. No afirmes que está licenciada; requiere confirmación escrita o sustitución por un proveedor con licencia comercial explícita.
+          - En asesinatos, desapariciones y tragedias, usa enfoque documental respetuoso; evita imágenes gráficas, detalles morbosos y miniaturas impactantes.
+          - Evita lenguaje sensacionalista y afirmaciones conspirativas presentadas como hechos.
           - Cuando haya versiones contradictorias, explica brevemente la diferencia.
           - Evita afirmaciones sensacionalistas que no estén respaldadas.
           - No incluyas instrucciones visuales, etiquetas de cámara ni notas para el editor.
@@ -469,6 +481,10 @@ jobs:
           echo "- Voz: es-ES-AlvaroNeural (Edge TTS)" >> "$GITHUB_STEP_SUMMARY"
           echo "- Subtítulos: palabra a palabra, animación pop-spring, amarillo con borde y fondo oscuro" >> "$GITHUB_STEP_SUMMARY"
           echo "- Música: desactivada temporalmente; no se usará música aleatoria sin licencia verificada" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Fuentes: el guion solicita referencias; deben comprobarse manualmente, no existe verificación automática independiente." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Voz Edge TTS: derechos comerciales no confirmados; no considerar monetización verificada." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Derechos visuales: revisar origen, licencia y derechos de terceros de cada recurso Pixabay." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Revisión de monetización: pendiente de verificación editorial y de derechos." >> "$GITHUB_STEP_SUMMARY"
           echo "- Fuente visual: Pixabay" >> "$GITHUB_STEP_SUMMARY"
           echo "- YouTube: publicación pública programada para ${{ steps.publish_time.outputs.scheduled_date }} (Europe/Madrid)" >> "$GITHUB_STEP_SUMMARY"
           echo "- Estado de programación: ${{ steps.youtube_publish.outputs.status }}" >> "$GITHUB_STEP_SUMMARY"
