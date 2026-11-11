@@ -104,8 +104,8 @@ jobs:
               print(f"Tema seleccionado: {subject}")
 
           prompt = """
-          Escribe un guion documental de entre 1.900 y 2.200 palabras, pensado para
-          una narración de aproximadamente 12 a 15 minutos en español de España.
+          Escribe un guion documental de entre 2.300 y 2.600 palabras, pensado para
+          una narración de aproximadamente 15 a 18 minutos en español de España.
           La extensión es un requisito: no entregues un resumen ni un texto breve.
           Desarrolla los 10 bloques con información sustancial, transiciones naturales
           y sin repetir datos ni inventar contenido para alcanzar la longitud.
@@ -262,8 +262,8 @@ jobs:
           import sys
           seconds = float(sys.argv[1])
           print(f"Duración del intento: {seconds / 60:.1f} minutos")
-          if seconds < 540:
-              raise SystemExit("Duración inferior a 9 minutos; se probará el siguiente proveedor/modelo.")
+          if seconds < 720:
+              raise SystemExit("Duración inferior a 12 minutos; se probará el siguiente proveedor/modelo.")
           PY
                 then
                   echo "Generación válida completada con $provider ($model)."
@@ -331,10 +331,10 @@ jobs:
           import sys
           seconds = float(sys.argv[1])
           print(f"Duración detectada: {seconds / 60:.1f} minutos")
-          if seconds < 540:
-              raise SystemExit("El vídeo dura menos de 9 minutos; no se considera listo para publicar.")
-          if not 600 <= seconds <= 900:
-              print("AVISO: la duración queda fuera del objetivo de 10-15 minutos.")
+          if seconds < 720:
+              raise SystemExit("El vídeo dura menos de 12 minutos; no se considera listo para publicar.")
+          if not 900 <= seconds <= 1080:
+              print("AVISO: la duración queda fuera del objetivo de 15-18 minutos.")
           PY
 
           mkdir -p ../output
@@ -385,7 +385,7 @@ jobs:
           echo "- Duración: $(python3 -c 'print(round(float(open("output/duration_seconds.txt").read())/60, 1))') minutos" >> "$GITHUB_STEP_SUMMARY"
           echo "- Voz: es-ES-AlvaroNeural (Edge TTS)" >> "$GITHUB_STEP_SUMMARY"
           echo "- Fuente visual: Pixabay" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Publicación automática: todavía desactivada" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Publicación automática: pendiente de configurar Upload-Post" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Subir vídeo y datos como artefacto descargable
         if: steps.local_time.outputs.run_now == 'true' && success()
