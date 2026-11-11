@@ -3,8 +3,23 @@
 from pathlib import Path
 import re
 
-task_path = Path("app/services/task.py")
-video_path = Path("app/services/video.py")
+# The workflow runs this script from the repository root, while MPT is
+# cloned into ./mpt. Also allow running it manually from inside ./mpt.
+candidates = [Path("mpt"), Path(".")]
+mpt_root = next(
+    (root for root in candidates
+     if (root / "app/services/task.py").is_file()
+     and (root / "app/services/video.py").is_file()),
+    None,
+)
+if mpt_root is None:
+    raise SystemExit(
+        "No encuentro MoneyPrinterTurbo: esperaba ./mpt/app/services/ "
+        "o ./app/services/. Comprueba que el repositorio MPT se haya clonado."
+    )
+
+task_path = mpt_root / "app/services/task.py"
+video_path = mpt_root / "app/services/video.py"
 task = task_path.read_text(encoding="utf-8")
 video = video_path.read_text(encoding="utf-8")
 
