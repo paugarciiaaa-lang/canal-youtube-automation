@@ -70,6 +70,40 @@ new_function = '''def generate_script(task_id, params):
 
 '''
 task = task[:start] + new_function + task[end:]
+
+# Reject short TTS before subtitle generation, stock downloads, clip processing or rendering.
+old_audio_guard = """    if not audio_file:
+        return _mark_task_failed(
+            task_id,
+            "audio",
+            "failed to prepare narration audio",
+        )
+
+    sm.state.update_task(task_id, state=const.TASK_STATE_PROCESSING, progress=30)
+"""
+new_audio_guard = """    if not audio_file:
+        return _mark_task_failed(
+            task_id,
+            "audio",
+            "failed to prepare narration audio",
+        )
+
+    if audio_duration is None or float(audio_duration) < 720:
+        actual = 0.0 if audio_duration is None else float(audio_duration)
+        message = (
+            f"narración demasiado corta: {actual / 60:.2f} minutos; "
+            "mínimo 12 minutos. Se detiene antes de subtítulos, descarga "
+            "de clips y renderizado."
+        )
+        logger.error(message)
+        return _mark_task_failed(task_id, "audio", message)
+
+    logger.info(f"audio duration preflight passed: {float(audio_duration) / 60:.2f} minutes")
+    sm.state.update_task(task_id, state=const.TASK_STATE_PROCESSING, progress=30)
+"""
+if old_audio_guard not in task:
+    raise SystemExit("No se encontró la validación de audio de task.py; se cancela el parche.")
+task = task.replace(old_audio_guard, new_audio_guard, 1)
 task_path.write_text(task, encoding="utf-8")
 
 old_concat = '''            "-c:v",
