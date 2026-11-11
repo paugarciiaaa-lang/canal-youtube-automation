@@ -32,6 +32,7 @@ jobs:
 
       - name: Montar vídeo MP4
         run: |
+          mkdir -p output
           ffmpeg -y -framerate 18 -i whiteboard_frames/frame_%05d.png \
             -c:v libx264 -preset veryfast -crf 20 -pix_fmt yuv420p \
             -movflags +faststart output/caspitas-whiteboard-preview.mp4
