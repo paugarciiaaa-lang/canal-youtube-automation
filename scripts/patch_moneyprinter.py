@@ -103,11 +103,11 @@ new_audio_guard = """    if not audio_file:
             "failed to prepare narration audio",
         )
 
-    if audio_duration is None or float(audio_duration) < 840:
+    if audio_duration is None or float(audio_duration) < 600:
         actual = 0.0 if audio_duration is None else float(audio_duration)
         message = (
             f"narración demasiado corta: {actual / 60:.2f} minutos; "
-            "mínimo 14 minutos. Se detiene antes de subtítulos, descarga "
+            "mínimo 10 minutos. Se detiene antes de subtítulos, descarga "
             "de clips y renderizado."
         )
         logger.error(message)
