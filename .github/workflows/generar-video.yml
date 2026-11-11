@@ -355,15 +355,15 @@ jobs:
           printf '%s | %s\n' "$(cat ../selected_provider.txt)" "$(cat ../selected_model.txt)" > ../output/modelo.txt
           echo "video_path=output/$(basename "$final")" >> "$GITHUB_OUTPUT"
           echo "topic=$(cat ../topic_subject.txt)" >> "$GITHUB_OUTPUT"
-          script_file="$(find storage/tasks -type f -iname '*script*.txt' -size +2k -printf '%s %p\\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+          script_file="$(find storage/tasks -type f -iname '*script*.txt' -size +2k -printf '%s %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
           if [ -z "$script_file" ]; then
-            script_file="$(find storage/tasks -type f -iname '*.srt' -size +2k -printf '%s %p\\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+            script_file="$(find storage/tasks -type f -iname '*.srt' -size +2k -printf '%s %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
           fi
           if [ -n "$script_file" ] && [ -f "$script_file" ]; then
             cp "$script_file" ../output/script_source.txt
             echo "Se ha localizado el guion/subtítulo para crear metadatos basados en el contenido."
           else
-            printf '%s\\n' "$(cat ../topic_subject.txt)" > ../output/script_source.txt
+            printf '%s\n' "$(cat ../topic_subject.txt)" > ../output/script_source.txt
             echo "::warning::No se ha localizado el texto del guion; los metadatos usarán el tema como respaldo."
           fi
           echo "Vídeo validado y preparado: $final"
