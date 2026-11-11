@@ -30,8 +30,8 @@ if start < 0 or end < 0:
 
 new_function = '''def generate_script(task_id, params):
     logger.info("\\n\\n## generating and validating long-form video script")
-    minimum_words = 1700
-    target_words = "1.900-2.200 palabras"
+    minimum_words = 2200
+    target_words = "2.300-2.500 palabras"
     video_script = str(params.video_script or "").strip()
 
     if video_script:
@@ -44,7 +44,7 @@ new_function = '''def generate_script(task_id, params):
                 f"\\n\\nREQUISITO DE DURACIÓN OBLIGATORIO: redacta entre {target_words}. "
                 "No resumas ni acortes. Desarrolla cronología, contexto, pruebas, "
                 "testimonios atribuibles, hipótesis contrastadas y consecuencias. "
-                "Antes de terminar, comprueba que el texto supera 1.900 palabras. "
+                "Antes de terminar, comprueba que el texto supera 2.300 palabras. "
                 f"Esta es la generación {attempt} de 3."
             )
             prompt = str(params.video_script_prompt or "") + retry_note
@@ -103,11 +103,11 @@ new_audio_guard = """    if not audio_file:
             "failed to prepare narration audio",
         )
 
-    if audio_duration is None or float(audio_duration) < 720:
+    if audio_duration is None or float(audio_duration) < 840:
         actual = 0.0 if audio_duration is None else float(audio_duration)
         message = (
             f"narración demasiado corta: {actual / 60:.2f} minutos; "
-            "mínimo 12 minutos. Se detiene antes de subtítulos, descarga "
+            "mínimo 14 minutos. Se detiene antes de subtítulos, descarga "
             "de clips y renderizado."
         )
         logger.error(message)
