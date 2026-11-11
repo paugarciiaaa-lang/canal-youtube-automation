@@ -166,9 +166,14 @@ jobs:
             echo "::error::Falta el secreto UPLOAD_POST_API_KEY. Añádelo en Settings > Secrets and variables > Actions."
             exit 1
           fi
-          if [ -z "$GEMINI_API_KEY" ]; then
-            echo "::error::Falta el secreto GEMINI_API_KEY en GitHub Actions."
+          if [ -z "$GEMINI_API_KEY" ] && [ -z "$OPENROUTER_API_KEY" ]; then
+            echo "::error::Configura al menos un proveedor de IA: GEMINI_API_KEY u OPENROUTER_API_KEY."
             exit 1
+          fi
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "Gemini no está configurado; se utilizará OpenRouter."
+          else
+            echo "Gemini está configurado; OpenRouter podrá actuar como respaldo."
           fi
           if [ -z "$PIXABAY_API_KEY" ]; then
             echo "::error::Falta el secreto PIXABAY_API_KEY en GitHub Actions."
@@ -212,6 +217,7 @@ jobs:
         if: steps.local_time.outputs.run_now == 'true'
         working-directory: mpt
         env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
           set -euo pipefail
@@ -318,21 +324,26 @@ jobs:
 
           # Se prueban dos modelos Gemini; si fallan o generan un vídeo demasiado corto,
           # se pasa a OpenRouter, que es independiente de la infraestructura Google.
-          for model in gemini-3.5-flash-lite gemini-3.8-flash; do
-            if run_generation "gemini" "$model" "gemini_model_name"; then
-              break
-            else
-              status=$?
-              if [ "$status" -eq 124 ]; then
-                echo "Se detiene el fallback: el intento agotó su tiempo durante el procesamiento."
+          status=1
+          if [ -n "$GEMINI_API_KEY" ]; then
+            for model in gemini-3.5-flash-lite gemini-3.8-flash; do
+              if run_generation "gemini" "$model" "gemini_model_name"; then
                 break
+              else
+                status=$?
+                if [ "$status" -eq 124 ]; then
+                  echo "Se detiene el fallback: el intento agotó su tiempo durante el procesamiento."
+                  break
+                fi
               fi
-            fi
-            if [ "$model" != "gemini-3.8-flash" ]; then
-              echo "Esperando 45 segundos antes del siguiente intento Gemini..."
-              sleep 45
-            fi
-          done
+              if [ "$model" != "gemini-3.8-flash" ]; then
+                echo "Esperando 45 segundos antes del siguiente intento Gemini..."
+                sleep 45
+              fi
+            done
+          else
+            echo "No hay clave Gemini; se omitirá Gemini y se probará OpenRouter directamente."
+          fi
 
           if [ "$success" != "true" ] && [ "${status:-0}" -ne 124 ] && [ -n "$OPENROUTER_API_KEY" ]; then
             echo "Gemini no ha podido completar la generación. Activando OpenRouter..."
@@ -515,9 +526,13 @@ jobs:
           echo "- Publicación autorizada por los controles de derechos: ${{ steps.monetization_gate.outputs.publish_allowed }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Revisión de monetización: pendiente de verificación editorial y de derechos." >> "$GITHUB_STEP_SUMMARY"
           echo "- Fuente visual: Pixabay" >> "$GITHUB_STEP_SUMMARY"
-          echo "- YouTube: publicación pública programada para ${{ steps.publish_time.outputs.scheduled_date }} (Europe/Madrid)" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Estado de programación: ${{ steps.youtube_publish.outputs.status }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Trabajo de Upload-Post: ${{ steps.youtube_publish.outputs.job-id }}" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.monetization_gate.outputs.publish_allowed }}" = "true" ]; then
+            echo "- YouTube: publicación pública programada para ${{ steps.publish_time.outputs.scheduled_date }} (Europe/Madrid)" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Estado de programación: ${{ steps.youtube_publish.outputs.status }}" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Trabajo de Upload-Post: ${{ steps.youtube_publish.outputs.job-id }}" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- YouTube: NO publicado ni programado; los controles de derechos siguen pendientes." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Subir vídeo y datos como artefacto descargable
         if: steps.local_time.outputs.run_now == 'true' && success()
