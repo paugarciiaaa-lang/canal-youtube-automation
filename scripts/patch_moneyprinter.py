@@ -51,7 +51,7 @@ new_function = '''def generate_script(task_id, params):
             video_script = llm.generate_script(
                 video_subject=params.video_subject,
                 language=params.video_language,
-                paragraph_number=max(16, int(params.paragraph_number or 10)),
+                paragraph_number=max(1, min(10, int(params.paragraph_number or 10))),
                 video_script_prompt=prompt,
                 custom_system_prompt=params.custom_system_prompt,
             )
