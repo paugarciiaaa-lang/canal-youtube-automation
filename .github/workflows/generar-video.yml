@@ -44,6 +44,12 @@ jobs:
         if: steps.local_time.outputs.run_now == 'true'
         run: git clone --depth 1 --branch v1.3.10 https://github.com/harry0703/MoneyPrinterTurbo.git mpt
 
+      - name: Aplicar controles de duración y optimización FFmpeg
+        if: steps.local_time.outputs.run_now == 'true'
+        run: |
+          python3 scripts/patch_moneyprinter.py
+          python3 -m py_compile mpt/app/services/task.py mpt/app/services/video.py
+
       - name: Instalar Python con caché de dependencias
         if: steps.local_time.outputs.run_now == 'true'
         uses: actions/setup-python@v5
@@ -108,7 +114,7 @@ jobs:
               print(f"Tema seleccionado: {subject}")
 
           prompt = """
-          Escribe un guion documental de 2.300-2.600 palabras para narración de 15-18 minutos en español de España. Desarrolla cada parte con profundidad, sin relleno ni repeticiones.
+          Escribe un guion documental de 1.900-2.200 palabras para narración de aproximadamente 14-17 minutos en español de España. Desarrolla cada parte con profundidad, sin relleno ni repeticiones. El sistema rechazará guiones inferiores a 1.700 palabras ANTES de generar audio, descargar recursos o renderizar.
 
           ESTRUCTURA: gancho de 20-30 segundos; contexto histórico y protagonistas; relato cronológico; pruebas, documentos y testimonios; hipótesis y evidencias; contradicciones y explicaciones alternativas; distinguir hechos confirmados, debatidos y desconocidos; consecuencias y estado actual; conclusión razonada y pregunta final al espectador.
 
@@ -247,7 +253,7 @@ jobs:
               --bgm-volume 0 \
               --subtitle-enabled \
               --subtitle-display-mode word_by_word \
-              --subtitle-animation pop_spring \
+              --subtitle-animation none \
               --font-size 54 \
               --text-fore-color "#FFE36E" \
               --stroke-color "#171717" \
@@ -332,6 +338,22 @@ jobs:
 
           printf '%s\n' "$selected_provider" > ../selected_provider.txt
           printf '%s\n' "$selected_model" > ../selected_model.txt
+
+      - name: Revisar MP4, duración, pistas y sincronización de subtítulos
+        if: steps.local_time.outputs.run_now == 'true'
+        working-directory: mpt
+        run: |
+          set -euo pipefail
+          video="$(find storage/tasks -type f -name '*.mp4' -size +1M -printf '%T@ %p\\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+          if [ -z "$video" ] || [ ! -f "$video" ]; then
+            echo "::error::No hay un MP4 que pueda pasar el control de calidad."
+            exit 1
+          fi
+          mkdir -p ../output
+          python3 ../scripts/validate_video.py "$video" --report ../output/qa_report.json
+          task_dir="$(dirname "$video")"
+          cp "$task_dir/subtitle.srt" ../output/subtitles.srt
+          cp ../generation.log ../output/generation.log
 
       - name: Validar duración y preparar el vídeo final
         id: prepared_video
@@ -492,6 +514,10 @@ jobs:
           echo "- Tema: $(cat output/tema.txt)" >> "$GITHUB_STEP_SUMMARY"
           echo "- Proveedor/modelo de guion: $(cat output/modelo.txt)" >> "$GITHUB_STEP_SUMMARY"
           echo "- Duración: $(python3 -c 'print(round(float(open("output/duration_seconds.txt").read())/60, 1))') minutos" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Control técnico: $(python3 -c 'import json; print(json.load(open("output/qa_report.json"))["status"])')" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Sincronización A/V: $(python3 -c 'import json; print(json.load(open("output/qa_report.json"))["audio_video_drift_seconds"])') segundos de diferencia" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Subtítulos: $(python3 -c 'import json; print(json.load(open("output/qa_report.json"))["subtitle_cues"])') cues revisados; comprobar también la escucha final" >> "$GITHUB_STEP_SUMMARY"
+          echo "- FFmpeg: preset veryfast y CRF 23; subtítulo palabra a palabra conservado sin animación spring costosa" >> "$GITHUB_STEP_SUMMARY"
           echo "- Voz: es-ES-AlvaroNeural (Edge TTS)" >> "$GITHUB_STEP_SUMMARY"
           echo "- Subtítulos: palabra a palabra, animación pop-spring, amarillo con borde y fondo oscuro" >> "$GITHUB_STEP_SUMMARY"
           echo "- Música: desactivada temporalmente; no se usará música aleatoria sin licencia verificada" >> "$GITHUB_STEP_SUMMARY"
