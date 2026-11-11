@@ -353,34 +353,6 @@ jobs:
           echo "topic=$(cat ../topic_subject.txt)" >> "$GITHUB_OUTPUT"
           echo "Vídeo validado y preparado: $final"
 
-      - name: Crear título, descripción y miniatura whiteboard
-        id: youtube_assets
-        if: steps.local_time.outputs.run_now == 'true' && success()
-        run: |
-          set -euo pipefail
-          python3 scripts/create_youtube_assets.py
-          mkdir -p thumbnails
-          thumbnail="thumbnails/caspitas-$GITHUB_RUN_NUMBER.png"
-          cp output/thumbnail.png "$thumbnail"
-          # Public URL so Upload-Post can set the custom YouTube thumbnail.
-          echo "thumbnail_url=https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_REF_NAME/$thumbnail" >> "$GITHUB_OUTPUT"
-          python3 - <<'PY' >> "$GITHUB_OUTPUT"
-          import json
-          from pathlib import Path
-          data = json.loads(Path("output/metadata.json").read_text(encoding="utf-8"))
-          # Keep title safe for the JSON passed to the publishing action.
-          title = data["title"].replace('"', "").replace("\\n", " ").strip()
-          print("title=" + title)
-          print("description<<CASPITAS_DESCRIPTION")
-          print(data["description"])
-          print("CASPITAS_DESCRIPTION")
-          PY
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$thumbnail"
-          git commit -m "Add Caspitas whiteboard thumbnail for run $GITHUB_RUN_NUMBER"
-          git push origin "HEAD:$GITHUB_REF_NAME"
-
       - name: Guardar tema en el historial para evitar repeticiones
         if: steps.local_time.outputs.run_now == 'true' && success()
         run: |
@@ -411,6 +383,34 @@ jobs:
               git push origin "HEAD:${GITHUB_REF_NAME}"
             fi
           fi
+
+      - name: Crear título, descripción y miniatura whiteboard
+        id: youtube_assets
+        if: steps.local_time.outputs.run_now == 'true' && success()
+        run: |
+          set -euo pipefail
+          python3 scripts/create_youtube_assets.py
+          mkdir -p thumbnails
+          thumbnail="thumbnails/caspitas-$GITHUB_RUN_NUMBER.png"
+          cp output/thumbnail.png "$thumbnail"
+          # Public URL so Upload-Post can set the custom YouTube thumbnail.
+          echo "thumbnail_url=https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_REF_NAME/$thumbnail" >> "$GITHUB_OUTPUT"
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+          data = json.loads(Path("output/metadata.json").read_text(encoding="utf-8"))
+          # Keep title safe for the JSON passed to the publishing action.
+          title = data["title"].replace('"', "").replace("\\n", " ").strip()
+          print("title=" + title)
+          print("description<<CASPITAS_DESCRIPTION")
+          print(data["description"])
+          print("CASPITAS_DESCRIPTION")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$thumbnail"
+          git commit -m "Add Caspitas whiteboard thumbnail for run $GITHUB_RUN_NUMBER"
+          git push origin "HEAD:$GITHUB_REF_NAME"
 
       - name: Calcular publicación para mañana a las 21:00 (hora de España)
         id: publish_time
