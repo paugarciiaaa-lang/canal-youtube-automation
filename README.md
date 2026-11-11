@@ -36,22 +36,6 @@ La generación del documental largo está configurada, pero debe superar pruebas
 
 La cola de Shorts está implementada como lógica de planificación, pero todavía no genera automáticamente los cinco clips, no conserva sus archivos de vídeo y no los publica. La publicación automática del documental largo en YouTube también permanece desactivada.
 
-## Escenas de vídeo generadas con Google AI (opcional)
-
-El workflow incluye una integración experimental con Gemini Omni 1.2 Flash:
-
-- Genera dos planos documentales de 6 segundos basados en el tema y el guion.
-- Los añade como ventanas visuales discretas al montaje final; el audio generado por Google se descarta para conservar la narración original.
-- Vuelve a ejecutar el control técnico del MP4 después de la composición.
-- Si la API falla, mantiene el vídeo original y continúa sin bloquear el workflow.
-- La integración está desactivada por defecto para evitar costes no autorizados.
-
-Para probarla manualmente, ejecuta **Generar vídeo del canal** desde GitHub Actions y activa la entrada `google_ai_scenes`. Para habilitarla en ejecuciones programadas, configura la variable de repositorio `GOOGLE_AI_SCENES_ENABLED=true`. Requiere `GEMINI_API_KEY` con acceso de pago a Gemini Omni 1.2 Flash y facturación habilitada.
-
-**Coste orientativo:** Google anuncia aproximadamente 0,07 USD por segundo de vídeo 720p para Omni 1.2 Flash. Dos clips de 6 segundos supondrían alrededor de 0,84 USD por documental (unos 25 USD al mes si se generasen a diario), antes de posibles impuestos y costes adicionales. Comprueba siempre los precios y el consumo en Google AI Studio.
-
-Los clips se guardan en `output/ai_scenes/` dentro del artefacto de la ejecución. Esta primera fase usa ventanas PIP para no tapar los subtítulos ya incrustados. La integración no sustituye Pixabay ni el estilo de animación propio que se definirá cuando se incorporen las imágenes de referencia.
-
 ## Cola de Shorts
 
 La lógica está en `scripts/shorts_queue.py`. Mantiene cada documental y sus cinco Shorts, consulta qué pieza corresponde a una franja y permite marcarla como publicada para evitar duplicados.
