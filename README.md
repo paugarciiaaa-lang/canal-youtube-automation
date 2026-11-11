@@ -24,7 +24,7 @@ El workflow `.github/workflows/generar-video.yml`:
 - Da hasta 150 minutos a cada intento de proveedor y hasta 180 minutos al trabajo completo, con registro de errores.
 - Usa Pixabay para materiales visuales y la voz española masculina `es-ES-AlvaroNeural` mediante Edge TTS.
 - Aumenta el tiempo límite de concatenación de FFmpeg y permite procesar dos clips simultáneamente para reducir el cuello de botella del montaje.
-- Comprueba que el MP4 exista y dure al menos 12 minutos; el objetivo editorial actual es de 14-17 minutos.
+- Comprueba que el MP4 exista y dure al menos 10 minutos; el objetivo editorial actual es de 14-17 minutos.
 - Guarda el vídeo y los datos básicos como artefacto de GitHub Actions durante 14 días.
 - Incluye un catálogo inicial de 31 temas y mantiene un historial para evitar repetirlos hasta agotar la lista.
 
