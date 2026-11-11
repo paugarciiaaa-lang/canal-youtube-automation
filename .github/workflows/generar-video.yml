@@ -144,7 +144,12 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          UPLOAD_POST_API_KEY: ${{ secrets.UPLOAD_POST_API_KEY }}
         run: |
+          if [ -z "$UPLOAD_POST_API_KEY" ]; then
+            echo "::error::Falta el secreto UPLOAD_POST_API_KEY. Añádelo en Settings > Secrets and variables > Actions."
+            exit 1
+          fi
           if [ -z "$GEMINI_API_KEY" ]; then
             echo "::error::Falta el secreto GEMINI_API_KEY en GitHub Actions."
             exit 1
@@ -316,6 +321,7 @@ jobs:
           printf '%s\n' "$selected_model" > ../selected_model.txt
 
       - name: Validar duración y preparar el vídeo final
+        id: prepared_video
         if: steps.local_time.outputs.run_now == 'true'
         working-directory: mpt
         run: |
@@ -343,6 +349,8 @@ jobs:
           printf '%s\n' "$duration" > ../output/duration_seconds.txt
           printf '%s\n' "$(cat ../topic_subject.txt)" > ../output/tema.txt
           printf '%s | %s\n' "$(cat ../selected_provider.txt)" "$(cat ../selected_model.txt)" > ../output/modelo.txt
+          echo "video_path=$final" >> "$GITHUB_OUTPUT"
+          echo "topic=$(cat ../topic_subject.txt)" >> "$GITHUB_OUTPUT"
           echo "Vídeo validado y preparado: $final"
 
       - name: Guardar tema en el historial para evitar repeticiones
@@ -376,6 +384,32 @@ jobs:
             fi
           fi
 
+      - name: Calcular publicación para mañana a las 21:00 (hora de España)
+        id: publish_time
+        if: steps.local_time.outputs.run_now == 'true' && success()
+        run: |
+          scheduled_date="$(TZ=Europe/Madrid date -d 'tomorrow 21:00' '+%Y-%m-%dT%H:%M:%S')"
+          echo "scheduled_date=$scheduled_date" >> "$GITHUB_OUTPUT"
+          echo "El documental se programará para $scheduled_date (Europe/Madrid)."
+
+      - name: Programar documental públicamente en YouTube
+        id: youtube_publish
+        if: steps.local_time.outputs.run_now == 'true' && success()
+        uses: Upload-Post/upload-post-action@v1
+        with:
+          api-key: ${{ secrets.UPLOAD_POST_API_KEY }}
+          profile: default
+          type: video
+          platforms: youtube
+          media: ${{ steps.prepared_video.outputs.video_path }}
+          text: ${{ steps.prepared_video.outputs.topic }}
+          scheduled-date: ${{ steps.publish_time.outputs.scheduled_date }}
+          timezone: Europe/Madrid
+          extra: |
+            {
+              "privacyStatus": "public"
+            }
+
       - name: Resumen de la generación
         if: steps.local_time.outputs.run_now == 'true' && success()
         run: |
@@ -385,7 +419,9 @@ jobs:
           echo "- Duración: $(python3 -c 'print(round(float(open("output/duration_seconds.txt").read())/60, 1))') minutos" >> "$GITHUB_STEP_SUMMARY"
           echo "- Voz: es-ES-AlvaroNeural (Edge TTS)" >> "$GITHUB_STEP_SUMMARY"
           echo "- Fuente visual: Pixabay" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Publicación automática: pendiente de configurar Upload-Post" >> "$GITHUB_STEP_SUMMARY"
+          echo "- YouTube: publicación pública programada para ${{ steps.publish_time.outputs.scheduled_date }} (Europe/Madrid)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Estado de programación: ${{ steps.youtube_publish.outputs.status }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Trabajo de Upload-Post: ${{ steps.youtube_publish.outputs.job-id }}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Subir vídeo y datos como artefacto descargable
         if: steps.local_time.outputs.run_now == 'true' && success()
