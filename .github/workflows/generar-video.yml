@@ -113,7 +113,7 @@ jobs:
               print(f"Tema seleccionado: {subject}")
 
           prompt = """
-          GUION DOCUMENTAL DE 1.900-2.200 PALABRAS en español de España, para narración de 14-17 minutos. Nunca menos de 1.700 palabras. Desarrolla, no resumas ni rellenes.
+          GUION DOCUMENTAL DE 2.300-2.500 PALABRAS en español de España, para narración de 14-17 minutos. Nunca menos de 2.200 palabras. Desarrolla, no resumas ni rellenes.
           ESTRUCTURA: gancho inicial; contexto y protagonistas; cronología detallada; pruebas, documentos y testimonios; hipótesis contrastadas; contradicciones y explicaciones alternativas; hechos confirmados frente a debates y lagunas; consecuencias y estado actual; conclusión razonada y pregunta final.
           RIGOR: no inventes hechos, fechas, nombres, citas, diálogos, documentos, fuentes ni enlaces. Prioriza fuentes primarias, archivos oficiales, estudios académicos e informes identificables. Atribuye las hipótesis y distingue claramente hechos, teorías, rumores y dudas. Si no puedes verificar una referencia, márcala como pendiente; no la presentes como verificada.
           VALOR: análisis propio, contexto específico y educativo; episodio original, no plantilla repetida. Sugiere recursos visuales pertinentes, mapas y cronologías, sin repetir clips de stock.
@@ -272,8 +272,8 @@ jobs:
           import sys
           seconds = float(sys.argv[1])
           print(f"Duración del intento: {seconds / 60:.1f} minutos")
-          if seconds < 720:
-              raise SystemExit("Duración inferior a 12 minutos; se probará el siguiente proveedor/modelo.")
+          if seconds < 840:
+              raise SystemExit("Duración inferior a 14 minutos; se probará el siguiente proveedor/modelo.")
           PY
                 then
                   echo "Generación válida completada con $provider ($model)."
@@ -363,10 +363,10 @@ jobs:
           import sys
           seconds = float(sys.argv[1])
           print(f"Duración detectada: {seconds / 60:.1f} minutos")
-          if seconds < 720:
-              raise SystemExit("El vídeo dura menos de 12 minutos; no se considera listo para publicar.")
-          if not 900 <= seconds <= 1080:
-              print("AVISO: la duración queda fuera del objetivo de 15-18 minutos.")
+          if seconds < 840:
+              raise SystemExit("El vídeo dura menos de 14 minutos; no se considera listo para publicar.")
+          if not 840 <= seconds <= 1020:
+              print("AVISO: la duración queda fuera del objetivo de 14-17 minutos.")
           PY
 
           mkdir -p ../output
