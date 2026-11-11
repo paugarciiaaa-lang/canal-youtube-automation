@@ -11,6 +11,11 @@ on:
         required: false
         type: string
         default: ''
+      google_ai_scenes:
+        description: 'Generar dos escenas extra con Gemini Omni (prueba manual; puede tener coste)'
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: caspitas-generacion
@@ -391,6 +396,32 @@ jobs:
           fi
           echo "Vídeo validado y preparado: $final"
 
+      - name: Generar dos escenas extra con Gemini Omni (opcional)
+        id: ai_scenes
+        if: steps.local_time.outputs.run_now == 'true' && success() && (github.event.inputs.google_ai_scenes == 'true' || vars.GOOGLE_AI_SCENES_ENABLED == 'true')
+        working-directory: .
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          set -euo pipefail
+          original="${{ steps.prepared_video.outputs.video_path }}"
+          enhanced="output/Caspitas-$(TZ=Europe/Madrid date +%Y-%m-%d)-$GITHUB_RUN_NUMBER-GoogleAI.mp4"
+          result="$(python3 scripts/generate_google_ai_scenes.py \
+            --subject-file output/tema.txt \
+            --script-file output/script_source.txt \
+            --video-in "$original" \
+            --video-out "$enhanced" \
+            --output-dir output/ai_scenes 2>&1 | tee output/google_ai_scenes.log)"
+          printf '%s\n' "$result"
+          echo "$result" | grep '^video_path=' >> "$GITHUB_OUTPUT"
+          echo "$result" | grep '^enabled=' >> "$GITHUB_OUTPUT"
+
+      - name: Revalidar vídeo después de las escenas IA
+        if: steps.local_time.outputs.run_now == 'true' && success() && steps.ai_scenes.outputs.enabled == 'true'
+        run: |
+          set -euo pipefail
+          python3 scripts/validate_video.py "${{ steps.ai_scenes.outputs.video_path }}" --report output/qa_report.json
+
       - name: Guardar tema en el historial para evitar repeticiones
         if: steps.local_time.outputs.run_now == 'true' && success()
         run: |
@@ -486,7 +517,7 @@ jobs:
           profile: default
           type: video
           platforms: youtube
-          media: ${{ steps.prepared_video.outputs.video_path }}
+          media: ${{ steps.ai_scenes.outputs.video_path || steps.prepared_video.outputs.video_path }}
           text: ${{ steps.youtube_assets.outputs.title }}
           scheduled-date: ${{ steps.publish_time.outputs.scheduled_date }}
           timezone: Europe/Madrid
@@ -519,6 +550,11 @@ jobs:
           echo "- Publicación autorizada por los controles de derechos: ${{ steps.monetization_gate.outputs.publish_allowed }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Revisión de monetización: pendiente de verificación editorial y de derechos." >> "$GITHUB_STEP_SUMMARY"
           echo "- Fuente visual: Pixabay" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.ai_scenes.outputs.enabled }}" = "true" ]; then
+            echo "- Google AI: dos escenas de Gemini Omni integradas como ventanas visuales; audio original y subtítulos conservados." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- Google AI: desactivado en esta ejecución; se conserva el montaje original de Pixabay." >> "$GITHUB_STEP_SUMMARY"
+          fi
           if [ "${{ steps.monetization_gate.outputs.publish_allowed }}" = "true" ]; then
             echo "- YouTube: publicación pública programada para ${{ steps.publish_time.outputs.scheduled_date }} (Europe/Madrid)" >> "$GITHUB_STEP_SUMMARY"
             echo "- Estado de programación: ${{ steps.youtube_publish.outputs.status }}" >> "$GITHUB_STEP_SUMMARY"
