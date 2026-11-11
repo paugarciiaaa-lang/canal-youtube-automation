@@ -390,12 +390,6 @@ jobs:
           fi
           echo "Vídeo validado y preparado: $final"
 
-      - name: Revalidar vídeo después de las escenas IA
-        if: steps.local_time.outputs.run_now == 'true' && success() && steps.ai_scenes.outputs.enabled == 'true'
-        run: |
-          set -euo pipefail
-          python3 scripts/validate_video.py "${{ steps.ai_scenes.outputs.video_path }}" --report output/qa_report.json
-
       - name: Guardar tema en el historial para evitar repeticiones
         if: steps.local_time.outputs.run_now == 'true' && success()
         run: |
@@ -524,11 +518,6 @@ jobs:
           echo "- Publicación autorizada por los controles de derechos: ${{ steps.monetization_gate.outputs.publish_allowed }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Revisión de monetización: pendiente de verificación editorial y de derechos." >> "$GITHUB_STEP_SUMMARY"
           echo "- Fuente visual: Pixabay" >> "$GITHUB_STEP_SUMMARY"
-          if [ "${{ steps.ai_scenes.outputs.enabled }}" = "true" ]; then
-            echo "- Google AI: dos escenas de Gemini Omni integradas como ventanas visuales; audio original y subtítulos conservados." >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "- Google AI: desactivado en esta ejecución; se conserva el montaje original de Pixabay." >> "$GITHUB_STEP_SUMMARY"
-          fi
           if [ "${{ steps.monetization_gate.outputs.publish_allowed }}" = "true" ]; then
             echo "- YouTube: publicación pública programada para ${{ steps.publish_time.outputs.scheduled_date }} (Europe/Madrid)" >> "$GITHUB_STEP_SUMMARY"
             echo "- Estado de programación: ${{ steps.youtube_publish.outputs.status }}" >> "$GITHUB_STEP_SUMMARY"
