@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""More dynamic, colorful whiteboard-animation preview for Caspitas."""
+"""Caspitas: hand-drawn, varied whiteboard documentary preview."""
 from __future__ import annotations
 import argparse
 import math
@@ -7,14 +7,15 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 WIDTH, HEIGHT, FPS = 1280, 720, 24
-SCENE_SECONDS, SCENES = 6, 3
-PAPER = (250, 249, 245)
-INK = (28, 30, 32)
-RED = (218, 67, 55)
-BLUE = (52, 116, 170)
-YELLOW = (238, 184, 55)
-GREEN = (65, 139, 105)
-PALETTE = [RED, BLUE, YELLOW, GREEN]
+SCENE_SECONDS = 6
+SCENES = 5
+PAPER = (252, 251, 247)
+INK = (27, 29, 31)
+RED = (205, 57, 49)
+BLUE = (48, 105, 151)
+YELLOW = (224, 169, 48)
+GREEN = (62, 126, 91)
+GREY = (160, 158, 149)
 
 def font(size, bold=False):
     paths = [
@@ -28,120 +29,189 @@ def font(size, bold=False):
 
 def ease(p):
     p = max(0.0, min(1.0, p))
-    return 1 - (1-p) ** 3
+    return p * p * (3 - 2 * p)
 
 def phase(t, start, duration=.22):
-    return ease((t-start)/duration)
+    return ease((t - start) / duration)
 
-def line(draw, pts, p, color=INK, width=6):
-    if p <= 0: return
-    total = sum(math.dist(a,b) for a,b in zip(pts,pts[1:]))
-    remaining = total * min(1,p)
+def stroke(draw, pts, p=1, color=INK, width=6):
+    if p <= 0 or len(pts) < 2:
+        return
+    total = sum(math.dist(a, b) for a, b in zip(pts, pts[1:]))
+    remaining = total * min(1, p)
     visible = [pts[0]]
-    for a,b in zip(pts,pts[1:]):
-        length = math.dist(a,b)
-        if remaining <= 0: break
-        f = min(1, remaining/length)
-        visible.append((int(a[0]+(b[0]-a[0])*f), int(a[1]+(b[1]-a[1])*f)))
+    for a, b in zip(pts, pts[1:]):
+        length = math.dist(a, b)
+        if remaining <= 0:
+            break
+        f = min(1, remaining / length)
+        visible.append((int(a[0] + (b[0]-a[0])*f), int(a[1] + (b[1]-a[1])*f)))
         remaining -= length
-        if f < 1: break
-    if len(visible)>1: draw.line(visible, fill=color, width=width, joint="curve")
+        if f < 1:
+            break
+    if len(visible) > 1:
+        draw.line(visible, fill=color, width=width, joint="curve")
 
-def circle(draw, box, p, color=INK, width=6):
-    if p>0: draw.arc(box, -90, -90+360*min(1,p), fill=color, width=width)
+def circle(draw, box, p=1, color=INK, width=6):
+    if p > 0:
+        draw.arc(box, -90, -90 + 360 * min(1, p), fill=color, width=width)
 
-def text_pop(draw, xy, value, p, size=34, color=INK, bold=True):
-    if p<=0: return
-    f=font(size,bold)
-    draw.text(xy,value,fill=color,font=f)
+def label(draw, xy, value, p=1, size=30, color=INK, bold=True):
+    if p > 0:
+        draw.text(xy, value, fill=color, font=font(size, bold))
 
-def marker_arrow(draw, a, b, p, color=RED, width=7):
-    line(draw,[a,b],p,color,width)
-    if p>.85:
-        ang=math.atan2(b[1]-a[1],b[0]-a[0])
-        tip=b
-        left=(b[0]-22*math.cos(ang-.55),b[1]-22*math.sin(ang-.55))
-        right=(b[0]-22*math.cos(ang+.55),b[1]-22*math.sin(ang+.55))
-        draw.polygon([tip,left,right],fill=color)
+def arrow(draw, a, b, p=1, color=RED, width=7):
+    stroke(draw, [a, b], p, color, width)
+    if p >= .95:
+        angle = math.atan2(b[1]-a[1], b[0]-a[0])
+        left = (b[0]-22*math.cos(angle-.55), b[1]-22*math.sin(angle-.55))
+        right = (b[0]-22*math.cos(angle+.55), b[1]-22*math.sin(angle+.55))
+        draw.polygon([b, left, right], fill=color)
 
-def stickman(draw, x, y, t):
-    # Walking/running legs and waving arm animate continuously.
-    bob=math.sin(t*math.pi*2)*5
-    yy=y+bob
-    circle(draw,(x-31,yy-31,x+31,yy+31),phase(t,0),INK,6)
-    line(draw,[(x,yy+31),(x,yy+132)],phase(t,.08),INK,8)
-    line(draw,[(x,yy+65),(x-58,yy+104)],phase(t,.18),INK,7)
-    arm_end=(x+72,yy+40+int(10*math.sin(t*math.pi*2)))
-    line(draw,[(x,yy+65),arm_end],phase(t,.28),BLUE,8)
-    swing=34*math.sin(t*math.pi*2)
-    line(draw,[(x,yy+132),(x-48+swing,yy+205)],phase(t,.38),INK,8)
-    line(draw,[(x,yy+132),(x+48-swing,yy+205)],phase(t,.48),INK,8)
-    if t>.35:
-        draw.ellipse((x-10,yy-5,x-3,yy+2),fill=INK)
-        draw.ellipse((x+6,yy-5,x+13,yy+2),fill=INK)
-        draw.arc((x-12,yy+2,x+13,yy+22),10,170,fill=RED,width=3)
+def stickman(draw, x, y, t, mood="worried", pose="thinking", scale=1.0, color=INK):
+    """Expressive hand-drawn stick figure; each scene can change mood and gesture."""
+    s = scale
+    bob = math.sin(t * math.pi * 2) * 3 * s
+    head_y = y + bob
+    r = 31 * s
+    circle(draw, (x-r, head_y-r, x+r, head_y+r), phase(t, 0, .2), color, max(3, int(5*s)))
+    # Eyes and brows are deliberately asymmetrical for a hand-drawn feel.
+    eye_y = head_y - 3*s
+    if mood == "worried":
+        draw.ellipse((x-13*s, eye_y-2*s, x-7*s, eye_y+5*s), fill=color)
+        draw.ellipse((x+7*s, eye_y-2*s, x+13*s, eye_y+5*s), fill=color)
+        stroke(draw, [(x-17*s,head_y-15*s),(x-7*s,head_y-19*s)], 1, color, max(2,int(3*s)))
+        stroke(draw, [(x+6*s,head_y-19*s),(x+17*s,head_y-14*s)], 1, color, max(2,int(3*s)))
+        draw.arc((x-8*s,head_y+9*s,x+10*s,head_y+24*s),190,345,fill=RED,width=max(2,int(3*s)))
+    elif mood == "surprised":
+        draw.ellipse((x-14*s,eye_y-5*s,x-5*s,eye_y+7*s),outline=color,width=max(2,int(3*s)))
+        draw.ellipse((x+5*s,eye_y-5*s,x+14*s,eye_y+7*s),outline=color,width=max(2,int(3*s)))
+        draw.ellipse((x-5*s,head_y+10*s,x+6*s,head_y+23*s),outline=RED,width=max(2,int(3*s)))
+    elif mood == "sad":
+        draw.ellipse((x-13*s,eye_y,x-7*s,eye_y+6*s),fill=color)
+        draw.ellipse((x+7*s,eye_y,x+13*s,eye_y+6*s),fill=color)
+        stroke(draw,[(x-14*s,head_y+17*s),(x,head_y+10*s),(x+14*s,head_y+17*s)],1,color,max(2,int(3*s)))
+    else:
+        draw.ellipse((x-12*s,eye_y,x-6*s,eye_y+6*s),fill=color)
+        draw.ellipse((x+6*s,eye_y,x+12*s,eye_y+6*s),fill=color)
+        draw.arc((x-12*s,head_y+3*s,x+12*s,head_y+23*s),5,175,fill=GREEN,width=max(2,int(3*s)))
+    # Torso
+    stroke(draw,[(x,head_y+r),(x,head_y+126*s)],1,color,max(4,int(7*s)))
+    shoulder=(x,head_y+65*s)
+    if pose == "thinking":
+        stroke(draw,[shoulder,(x-43*s,head_y+100*s),(x-15*s,head_y+40*s)],phase(t,.12),color,max(3,int(6*s)))
+        stroke(draw,[shoulder,(x+40*s,head_y+94*s),(x+17*s,head_y+31*s)],phase(t,.22),color,max(3,int(6*s)))
+    elif pose == "surprised":
+        stroke(draw,[shoulder,(x-53*s,head_y+25*s)],phase(t,.12),color,max(3,int(6*s)))
+        stroke(draw,[shoulder,(x+53*s,head_y+25*s)],phase(t,.2),color,max(3,int(6*s)))
+    elif pose == "pointing":
+        stroke(draw,[shoulder,(x-38*s,head_y+100*s)],phase(t,.12),color,max(3,int(6*s)))
+        stroke(draw,[shoulder,(x+78*s,head_y+27*s)],phase(t,.22),BLUE,max(3,int(6*s)))
+    else:
+        wave=10*math.sin(t*math.pi*4)*s
+        stroke(draw,[shoulder,(x-48*s,head_y+25*s)],phase(t,.12),color,max(3,int(6*s)))
+        stroke(draw,[shoulder,(x+52*s,head_y+28*s+wave)],phase(t,.22),color,max(3,int(6*s)))
+    # Legs, slightly offset to avoid a rigid pictogram look.
+    stride=18*math.sin(t*math.pi*2)*s
+    stroke(draw,[(x,head_y+126*s),(x-34*s+stride,head_y+202*s),(x-57*s+stride,head_y+205*s)],phase(t,.32),color,max(4,int(7*s)))
+    stroke(draw,[(x,head_y+126*s),(x+34*s-stride,head_y+202*s),(x+57*s-stride,head_y+205*s)],phase(t,.42),color,max(4,int(7*s)))
 
-def scene_one(d,t):
-    text_pop(d,(105,55),"UN MISTERIO",phase(t,0,.25),54,INK)
-    text_pop(d,(105,116),"QUE NADIE HA PODIDO EXPLICAR",phase(t,.12,.3),30,RED)
-    line(d,[(105,165),(780,165)],phase(t,.2),YELLOW,9)
-    stickman(d,390,270,t)
-    # Floating question marks and clue card
-    if t>.2:
-        pulse=1+0.12*math.sin(t*math.pi*5)
-        f=font(int(78*pulse),True); d.text((525,220),"?",font=f,fill=RED)
-        d.text((600,315),"?",font=f,fill=BLUE)
-    p=phase(t,.32,.25)
-    line(d,[(760,235),(1100,235),(1100,545),(760,545),(760,235)],p,INK,6)
-    text_pop(d,(805,270),"ARCHIVO",phase(t,.42),28,BLUE)
-    line(d,[(805,330),(1050,330)],phase(t,.5),INK,4)
-    line(d,[(805,380),(1025,380)],phase(t,.58),INK,4)
-    line(d,[(805,430),(1060,430)],phase(t,.66),INK,4)
-    circle(d,(845,455,930,540),phase(t,.72),RED,7)
-    text_pop(d,(125,585),"¿QUÉ OCURRIÓ REALMENTE?",phase(t,.78),32,RED)
+def magnifier(draw, x, y, p=1, color=BLUE):
+    circle(draw,(x-38,y-38,x+38,y+38),p,color,7)
+    stroke(draw,[(x+28,y+28),(x+78,y+78)],p,INK,10)
 
-def scene_two(d,t):
-    text_pop(d,(100,55),"SIGUE EL RASTRO",phase(t,0,.2),48,INK)
-    # Animated route with pulsing locations
-    route=[(130,360),(300,245),(480,330),(665,205),(850,310),(1090,190)]
+def scene_hook(d,t):
+    label(d,(88,55),"HAY UNA PIEZA QUE NO ENCAJA",phase(t,0),43)
+    stroke(d,[(90,115),(825,115)],phase(t,.1),YELLOW,8)
+    stickman(d,360,245,t,"worried","thinking",1.18)
+    label(d,(525,225),"¿Y SI...",phase(t,.22),34,RED)
+    label(d,(525,275),"NO FUE ASÍ?",phase(t,.35),38,RED)
+    # A clue card is drawn line by line.
+    p=phase(t,.3)
+    stroke(d,[(850,190),(1140,190),(1140,520),(850,520),(850,190)],p,INK,6)
+    label(d,(895,225),"PISTA Nº 1",phase(t,.42),26,BLUE)
+    for i,w in enumerate([205,170,225,145]):
+        stroke(d,[(895,300+i*42),(895+w,300+i*42)],phase(t,.48+i*.07),GREY,5)
+    circle(d,(965,435,1045,515),phase(t,.72),RED,7)
+    label(d,(95,600),"A VECES, EL DETALLE MÁS PEQUEÑO LO CAMBIA TODO",phase(t,.78),25,INK)
+
+def scene_map(d,t):
+    label(d,(90,48),"RECONSTRUIMOS EL RECORRIDO",phase(t,0),42)
+    # Sketchy map contour, route and landmarks.
+    stroke(d,[(90,230),(210,175),(350,205),(470,145),(620,205),(760,160),(930,220),(1130,165)],phase(t,.08),GREY,4)
+    stroke(d,[(110,475),(250,420),(390,485),(560,410),(710,470),(900,405),(1110,470)],phase(t,.12),GREY,4)
+    route=[(150,340),(335,270),(510,355),(690,245),(875,340),(1080,255)]
     for i in range(len(route)-1):
-        p=phase(t,.12+i*.1,.18)
-        line(d,route[i:i+2],p,BLUE,8)
+        arrow(d,route[i],route[i+1],phase(t,.18+i*.1,.2),BLUE,7)
     for i,(x,y) in enumerate(route):
-        p=phase(t,.18+i*.1,.12)
+        p=phase(t,.22+i*.1,.12)
         if p:
-            r=int(17+4*math.sin(t*math.pi*6+i))
-            d.ellipse((x-r,y-r,x+r,y+r),outline=RED if i%2==0 else YELLOW,width=7)
-    # Magnifier moves across the route
-    mx=220+760*min(1,t/.95)
-    my=470-100*math.sin(t*math.pi*2)
-    circle(d,(mx-55,my-55,mx+55,my+55),1,INK,8)
-    line(d,[(mx+40,my+40),(mx+112,my+112)],1,INK,13)
-    text_pop(d,(380,535),"UNA PISTA CAMBIA TODO",phase(t,.58),34,RED)
-    marker_arrow(d,(930,520),(1080,420),phase(t,.72),GREEN,7)
+            rad=13+4*math.sin(t*math.pi*6+i)
+            d.ellipse((x-rad,y-rad,x+rad,y+rad),outline=RED if i in (0,5) else YELLOW,width=6)
+    magnifier(d,int(220+760*min(1,t/.95)),int(510-45*math.sin(t*math.pi*2)),1)
+    label(d,(360,585),"CADA LUGAR CUENTA UNA PARTE",phase(t,.65),30,RED)
 
-def scene_three(d,t):
-    text_pop(d,(95,48),"LAS PIEZAS ENCAJAN",phase(t,0,.2),48,INK)
-    cards=[(90,210,390,430),(490,210,790,430),(890,210,1190,430)]
-    labels=["FECHAS","TESTIMONIOS","PRUEBAS"]
-    colors=[RED,BLUE,GREEN]
-    for i,((x1,y1,x2,y2),label,c) in enumerate(zip(cards,labels,colors)):
-        p=phase(t,.12+i*.16,.22)
-        line(d,[(x1,y1),(x2,y1),(x2,y2),(x1,y2),(x1,y1)],p,INK,6)
-        text_pop(d,(x1+22,y1+28),label,phase(t,.22+i*.16),25,c)
-        for j in range(3):
-            line(d,[(x1+24,y1+92+j*34),(x2-25-(j*24),y1+92+j*34)],phase(t,.3+i*.16+j*.06),INK,4)
-        if p>.7:
-            circle(d,(x2-62,y1+12,x2-22,y1+52),phase(t,.5+i*.1),c,5)
-    marker_arrow(d,(390,320),(490,320),phase(t,.38),RED,7)
-    marker_arrow(d,(790,320),(890,320),phase(t,.58),RED,7)
-    if t>.68:
-        # Big final stamp pops in
-        p=phase(t,.68,.18)
-        d.rounded_rectangle((330,500,950,620),radius=22,outline=RED,width=8)
-        text_pop(d,(385,530),"¿CASO RESUELTO?",p,48,RED)
+def scene_evidence(d,t):
+    label(d,(90,48),"NO TODAS LAS PRUEBAS PESAN IGUAL",phase(t,0),40)
+    # Evidence board: photograph, note, document and connecting string.
+    # Photo frame with a simple mountain sketch.
+    p=phase(t,.12)
+    stroke(d,[(95,190),(365,190),(365,405),(95,405),(95,190)],p,INK,6)
+    stroke(d,[(125,350),(190,270),(235,320),(290,235),(340,350)],phase(t,.25),BLUE,5)
+    circle(d,(255,210,300,255),phase(t,.32),YELLOW,5)
+    label(d,(120,425),"LUGAR",phase(t,.38),24,BLUE)
+    # Document
+    stroke(d,[(500,175),(755,175),(755,435),(500,435),(500,175)],phase(t,.2),INK,6)
+    label(d,(535,205),"INFORME",phase(t,.32),26,RED)
+    for i in range(4):
+        stroke(d,[(535,270+i*35),(710-(i%2)*35,270+i*35)],phase(t,.4+i*.07),GREY,4)
+    # Testimony bubble
+    circle(d,(875,190,1150,390),phase(t,.3),INK,6)
+    stroke(d,[(930,370),(900,425),(990,390)],phase(t,.42),INK,6)
+    label(d,(920,250),"TESTIMONIO",phase(t,.48),24,GREEN)
+    label(d,(920,295),"¿FIABLE?",phase(t,.58),30,RED)
+    # Connecting strings and a hand-drawn check/cross
+    stroke(d,[(365,295),(500,295)],phase(t,.65),RED,5)
+    stroke(d,[(755,295),(875,295)],phase(t,.72),RED,5)
+    label(d,(270,535),"DOCUMENTOS",phase(t,.78),23,BLUE)
+    label(d,(565,535),"CONTRASTAR",phase(t,.82),23,RED)
+    label(d,(905,535),"CONTEXTO",phase(t,.86),23,GREEN)
 
-RENDERERS=[scene_one,scene_two,scene_three]
+def scene_timeline(d,t):
+    label(d,(90,48),"ORDENAMOS LOS HECHOS",phase(t,0),44)
+    stroke(d,[(130,365),(1140,365)],phase(t,.12),INK,7)
+    events=[(190,"ANTES","Contexto",BLUE),(455,"DURANTE","Hechos",RED),(730,"DESPUÉS","Consecuencias",GREEN),(1030,"HOY","Qué sabemos",YELLOW)]
+    for i,(x,top,bottom,c) in enumerate(events):
+        p=phase(t,.2+i*.15,.18)
+        stroke(d,[(x,365),(x,250 if i%2==0 else 465)],p,c,6)
+        circle(d,(x-15,350,x+15,380),p,c,5)
+        label(d,(x-80,190 if i%2==0 else 480),top,p,25,c)
+        label(d,(x-80,225 if i%2==0 else 515),bottom,p,20,INK,False)
+    stickman(d,625,220,t,"neutral","pointing",.62)
+    label(d,(390,625),"SEPARAR HECHOS, HIPÓTESIS Y DUDAS",phase(t,.78),27,RED)
+
+def scene_conclusion(d,t):
+    label(d,(90,48),"UNA CONCLUSIÓN HONESTA",phase(t,0),44)
+    stickman(d,285,245,t,"neutral","pointing",1.0)
+    # Three distinct categories instead of a single simplistic reveal.
+    boxes=[(510,170,1130,270),(510,315,1130,415),(510,460,1130,560)]
+    names=["CONFIRMADO","NO ESTÁ CLARO","SIGUE ABIERTO"]
+    colors=[GREEN,YELLOW,RED]
+    for i,(box,name,c) in enumerate(zip(boxes,names,colors)):
+        x1,y1,x2,y2=box
+        p=phase(t,.18+i*.17,.2)
+        stroke(d,[(x1,y1),(x2,y1),(x2,y2),(x1,y2),(x1,y1)],p,INK,5)
+        label(d,(x1+28,y1+28),name,p,29,c)
+        if p>.8:
+            if i==0:
+                stroke(d,[(x2-95,y1+55),(x2-75,y1+75),(x2-38,y1+30)],phase(t,.55),GREEN,7)
+            elif i==1:
+                label(d,(x2-78,y1+17),"?",phase(t,.55),58,YELLOW)
+            else:
+                circle(d,(x2-88,y1+18,x2-35,y1+71),phase(t,.55),RED,6)
+    label(d,(125,605),"NO INVENTAMOS RESPUESTAS. SEGUIMOS LAS PRUEBAS.",phase(t,.78),25,INK)
+
+RENDERERS=[scene_hook,scene_map,scene_evidence,scene_timeline,scene_conclusion]
 
 def render(output_dir:Path):
     output_dir.mkdir(parents=True,exist_ok=True)
@@ -152,20 +222,24 @@ def render(output_dir:Path):
         t=local/(FPS*SCENE_SECONDS-1)
         im=Image.new("RGB",(WIDTH,HEIGHT),PAPER)
         d=ImageDraw.Draw(im)
-        # Fine paper frame and subtle animated marker cursor
-        d.rectangle((22,22,WIDTH-22,HEIGHT-22),outline=(225,223,216),width=2)
+        d.rectangle((22,22,WIDTH-22,HEIGHT-22),outline=(226,224,216),width=2)
+        # Faint paper grain gives a subtle hand-drawn board texture.
+        for gx in range(48,WIDTH,160):
+            for gy in range(48,HEIGHT,150):
+                d.ellipse((gx,gy,gx+2,gy+2),fill=(238,236,229))
         RENDERERS[scene_index](d,t)
-        # Small red marker tip follows the drawing action.
-        if t<.92:
-            px=1120-850*t
-            py=650-420*abs(math.sin(t*math.pi))
-            d.ellipse((px-7,py-7,px+7,py+7),fill=RED)
-        # Gentle camera push-in makes the board feel less static.
-        zoom=1.0+0.018*math.sin(t*math.pi)
+        # A small marker tip follows the drawing sequence.
+        if t<.94:
+            px=1120-820*t
+            py=650-340*abs(math.sin(t*math.pi))
+            d.ellipse((px-6,py-6,px+6,py+6),fill=RED)
+        # Gentle camera drift changes framing without making text hard to read.
+        zoom=1.0+0.012*math.sin(t*math.pi)
         if zoom>1:
             nw,nh=int(WIDTH*zoom),int(HEIGHT*zoom)
             im=im.resize((nw,nh),Image.Resampling.LANCZOS)
-            left=(nw-WIDTH)//2; top=(nh-HEIGHT)//2
+            left=(nw-WIDTH)//2
+            top=(nh-HEIGHT)//2
             im=im.crop((left,top,left+WIDTH,top+HEIGHT))
         im.save(output_dir/f"frame_{frame:05d}.png",optimize=False)
     return total
