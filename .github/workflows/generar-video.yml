@@ -11,12 +11,6 @@ on:
         required: false
         type: string
         default: ''
-      google_ai_scenes:
-        description: 'Generar dos escenas extra con Gemini Omni (prueba manual; puede tener coste)'
-        required: false
-        type: boolean
-        default: false
-
 concurrency:
   group: caspitas-generacion
   cancel-in-progress: false
@@ -396,26 +390,6 @@ jobs:
           fi
           echo "Vídeo validado y preparado: $final"
 
-      - name: Generar dos escenas extra con Gemini Omni (opcional)
-        id: ai_scenes
-        if: steps.local_time.outputs.run_now == 'true' && success() && (github.event.inputs.google_ai_scenes == 'true' || vars.GOOGLE_AI_SCENES_ENABLED == 'true')
-        working-directory: .
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: |
-          set -euo pipefail
-          original="${{ steps.prepared_video.outputs.video_path }}"
-          enhanced="output/Caspitas-$(TZ=Europe/Madrid date +%Y-%m-%d)-$GITHUB_RUN_NUMBER-GoogleAI.mp4"
-          result="$(python3 scripts/generate_google_ai_scenes.py \
-            --subject-file output/tema.txt \
-            --script-file output/script_source.txt \
-            --video-in "$original" \
-            --video-out "$enhanced" \
-            --output-dir output/ai_scenes 2>&1 | tee output/google_ai_scenes.log)"
-          printf '%s\n' "$result"
-          echo "$result" | grep '^video_path=' >> "$GITHUB_OUTPUT"
-          echo "$result" | grep '^enabled=' >> "$GITHUB_OUTPUT"
-
       - name: Revalidar vídeo después de las escenas IA
         if: steps.local_time.outputs.run_now == 'true' && success() && steps.ai_scenes.outputs.enabled == 'true'
         run: |
@@ -517,7 +491,7 @@ jobs:
           profile: default
           type: video
           platforms: youtube
-          media: ${{ steps.ai_scenes.outputs.video_path || steps.prepared_video.outputs.video_path }}
+          media: ${{ steps.prepared_video.outputs.video_path }}
           text: ${{ steps.youtube_assets.outputs.title }}
           scheduled-date: ${{ steps.publish_time.outputs.scheduled_date }}
           timezone: Europe/Madrid
