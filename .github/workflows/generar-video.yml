@@ -449,9 +449,37 @@ jobs:
           echo "scheduled_date=$scheduled_date" >> "$GITHUB_OUTPUT"
           echo "El documental se programará para $scheduled_date (Europe/Madrid)."
 
+      - name: Comprobación final de derechos antes de publicar
+        id: monetization_gate
+        if: steps.local_time.outputs.run_now == 'true' && success()
+        env:
+          VOICE_LICENSE_CONFIRMED: ${{ secrets.VOICE_COMMERCIAL_LICENSE_CONFIRMED }}
+          SOURCES_VERIFIED: ${{ secrets.RESEARCH_SOURCES_VERIFIED }}
+          VISUAL_LICENSES_VERIFIED: ${{ secrets.VISUAL_LICENSES_VERIFIED }}
+        run: |
+          allowed=true
+          if [ "$VOICE_LICENSE_CONFIRMED" != "yes" ]; then
+            echo "::warning::Publicación bloqueada: falta confirmar por escrito la licencia comercial de la voz."
+            allowed=false
+          fi
+          if [ "$SOURCES_VERIFIED" != "yes" ]; then
+            echo "::warning::Publicación bloqueada: falta verificar las fuentes documentales del episodio."
+            allowed=false
+          fi
+          if [ "$VISUAL_LICENSES_VERIFIED" != "yes" ]; then
+            echo "::warning::Publicación bloqueada: falta revisar licencias y derechos de terceros de los recursos visuales."
+            allowed=false
+          fi
+          echo "publish_allowed=$allowed" >> "$GITHUB_OUTPUT"
+          if [ "$allowed" = "true" ]; then
+            echo "Controles documentales y de derechos confirmados."
+          else
+            echo "El vídeo se conservará como artefacto privado de revisión; no se programará en YouTube."
+          fi
+
       - name: Programar documental públicamente en YouTube
         id: youtube_publish
-        if: steps.local_time.outputs.run_now == 'true' && success()
+        if: steps.local_time.outputs.run_now == 'true' && success() && steps.monetization_gate.outputs.publish_allowed == 'true'
         uses: Upload-Post/upload-post-action@v1
         with:
           api-key: ${{ secrets.UPLOAD_POST_API_KEY }}
@@ -484,6 +512,7 @@ jobs:
           echo "- Fuentes: el guion solicita referencias; deben comprobarse manualmente, no existe verificación automática independiente." >> "$GITHUB_STEP_SUMMARY"
           echo "- Voz Edge TTS: derechos comerciales no confirmados; no considerar monetización verificada." >> "$GITHUB_STEP_SUMMARY"
           echo "- Derechos visuales: revisar origen, licencia y derechos de terceros de cada recurso Pixabay." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Publicación autorizada por los controles de derechos: ${{ steps.monetization_gate.outputs.publish_allowed }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Revisión de monetización: pendiente de verificación editorial y de derechos." >> "$GITHUB_STEP_SUMMARY"
           echo "- Fuente visual: Pixabay" >> "$GITHUB_STEP_SUMMARY"
           echo "- YouTube: publicación pública programada para ${{ steps.publish_time.outputs.scheduled_date }} (Europe/Madrid)" >> "$GITHUB_STEP_SUMMARY"
