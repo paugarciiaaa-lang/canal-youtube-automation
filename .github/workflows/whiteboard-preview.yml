@@ -9,7 +9,7 @@ permissions:
 jobs:
   render-whiteboard-preview:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
@@ -33,10 +33,10 @@ jobs:
       - name: Dibujar escenas de pizarra
         run: python scripts/whiteboard_preview.py --output-dir whiteboard_frames
 
-      - name: Montar vídeo MP4
+      - name: Montar vídeo MP4 a 24 fps
         run: |
           mkdir -p output
-          ffmpeg -y -framerate 18 -i whiteboard_frames/frame_%05d.png \
+          ffmpeg -y -framerate 24 -i whiteboard_frames/frame_%05d.png \
             -c:v libx264 -preset veryfast -crf 20 -pix_fmt yuv420p \
             -movflags +faststart output/caspitas-whiteboard-preview.mp4
         shell: bash
