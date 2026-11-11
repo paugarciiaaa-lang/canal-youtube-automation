@@ -181,7 +181,7 @@ jobs:
           openrouter_model_name = "nvidia/nemotron-3-ultra-550b-a55b:free"
           subtitle_provider = "edge"
           edge_tts_timeout = 90
-          ffmpeg_concat_timeout_seconds = 5400
+          ffmpeg_concat_timeout_seconds = 7200
           material_concurrency = 2
           video_clip_concurrency = 2
           EOF
@@ -229,7 +229,7 @@ jobs:
             find storage/tasks -mindepth 1 -maxdepth 1 -exec rm -rf {} +
 
             set +e
-            timeout --signal=TERM --kill-after=60s 45m python3 cli.py \
+            timeout --signal=TERM --kill-after=60s 150m python3 cli.py \
               --video-subject "$(cat ../topic_subject.txt)" \
               --video-script-prompt "$(cat ../topic_prompt.txt)" \
               --video-source pixabay \
@@ -278,6 +278,9 @@ jobs:
             fi
 
             echo "El intento con $provider ($model) ha fallado (código $status)."
+            if [ "$status" -eq 124 ]; then
+              echo "::error::Timeout del proceso completo. No se repetirá la generación con otro modelo porque el fallo se ha producido durante el procesamiento/renderizado, no necesariamente al generar el guion."
+            fi
             return "$status"
           }
 
@@ -286,6 +289,12 @@ jobs:
           for model in gemini-3.5-flash-lite gemini-3.8-flash; do
             if run_generation "gemini" "$model" "gemini_model_name"; then
               break
+            else
+              status=$?
+              if [ "$status" -eq 124 ]; then
+                echo "Se detiene el fallback: el intento agotó su tiempo durante el procesamiento."
+                break
+              fi
             fi
             if [ "$model" != "gemini-3.8-flash" ]; then
               echo "Esperando 45 segundos antes del siguiente intento Gemini..."
@@ -293,7 +302,7 @@ jobs:
             fi
           done
 
-          if [ "$success" != "true" ] && [ -n "$OPENROUTER_API_KEY" ]; then
+          if [ "$success" != "true" ] && [ "${status:-0}" -ne 124 ] && [ -n "$OPENROUTER_API_KEY" ]; then
             echo "Gemini no ha podido completar la generación. Activando OpenRouter..."
             run_generation "openrouter" "nvidia/nemotron-3-ultra-550b-a55b:free" "openrouter_model_name" || true
           fi
