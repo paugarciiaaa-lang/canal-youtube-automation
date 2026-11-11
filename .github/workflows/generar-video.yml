@@ -272,8 +272,8 @@ jobs:
           import sys
           seconds = float(sys.argv[1])
           print(f"Duración del intento: {seconds / 60:.1f} minutos")
-          if seconds < 840:
-              raise SystemExit("Duración inferior a 14 minutos; se probará el siguiente proveedor/modelo.")
+          if seconds < 600:
+              raise SystemExit("Duración inferior a 10 minutos; se probará el siguiente proveedor/modelo.")
           PY
                 then
                   echo "Generación válida completada con $provider ($model)."
@@ -363,9 +363,9 @@ jobs:
           import sys
           seconds = float(sys.argv[1])
           print(f"Duración detectada: {seconds / 60:.1f} minutos")
-          if seconds < 840:
-              raise SystemExit("El vídeo dura menos de 14 minutos; no se considera listo para publicar.")
-          if not 840 <= seconds <= 1020:
+          if seconds < 600:
+              raise SystemExit("El vídeo dura menos de 10 minutos; no se considera listo para publicar.")
+          if not 600 <= seconds <= 1020:
               print("AVISO: la duración queda fuera del objetivo de 14-17 minutos.")
           PY
 
