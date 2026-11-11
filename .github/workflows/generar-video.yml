@@ -250,8 +250,19 @@ jobs:
               --video-fit-mode "cover" \
               --video-clip-duration 6 \
               --video-transition-mode "fade-in" \
-              --bgm-type random \
-              --bgm-volume 0.12 \
+              --bgm-type none \
+              --bgm-volume 0
+              --subtitle-enabled
+              --subtitle-display-mode word_by_word
+              --subtitle-animation pop_spring
+              --font-size 54
+              --text-fore-color "#FFE36E"
+              --stroke-color "#171717"
+              --stroke-width 3
+              --subtitle-position bottom
+              --subtitle-background-enabled
+              --subtitle-background-color "#171717"
+              --rounded-subtitle-background \
               --n-threads 2 \
               --match-materials-to-script \
               --stop-at video 2>&1 | tee -a ../generation.log
@@ -456,6 +467,8 @@ jobs:
           echo "- Proveedor/modelo de guion: $(cat output/modelo.txt)" >> "$GITHUB_STEP_SUMMARY"
           echo "- Duración: $(python3 -c 'print(round(float(open("output/duration_seconds.txt").read())/60, 1))') minutos" >> "$GITHUB_STEP_SUMMARY"
           echo "- Voz: es-ES-AlvaroNeural (Edge TTS)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Subtítulos: palabra a palabra, animación pop-spring, amarillo con borde y fondo oscuro" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Música: desactivada temporalmente; no se usará música aleatoria sin licencia verificada" >> "$GITHUB_STEP_SUMMARY"
           echo "- Fuente visual: Pixabay" >> "$GITHUB_STEP_SUMMARY"
           echo "- YouTube: publicación pública programada para ${{ steps.publish_time.outputs.scheduled_date }} (Europe/Madrid)" >> "$GITHUB_STEP_SUMMARY"
           echo "- Estado de programación: ${{ steps.youtube_publish.outputs.status }}" >> "$GITHUB_STEP_SUMMARY"
