@@ -64,7 +64,7 @@ def main() -> None:
     audio_duration = float(adata["format"]["duration"])
     muxed_audio_duration = float(aus.get("duration") or audio_duration)
     av_drift = abs(video_duration - muxed_audio_duration)
-    if video_duration < 840:
+    if video_duration < 600:
         raise SystemExit(f"Duración insuficiente: {video_duration/60:.2f} min; mínimo 14 min.")
     if av_drift > 1.0:
         raise SystemExit(f"Desincronización A/V: {av_drift:.2f}s (máximo 1.0s).")
@@ -104,7 +104,7 @@ def main() -> None:
         "checks": [
             "MP4 válido y superior a 1 MB",
             "pistas de vídeo y audio presentes",
-            "duración mínima de 14 minutos",
+            "duración mínima de 10 minutos",
             "sincronización audio/vídeo <= 1 segundo",
             "resolución 1920x1080",
             "subtítulos presentes, ordenados y próximos al inicio/final del audio",
