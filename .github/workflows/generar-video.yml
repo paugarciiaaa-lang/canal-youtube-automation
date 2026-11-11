@@ -349,7 +349,7 @@ jobs:
           printf '%s\n' "$duration" > ../output/duration_seconds.txt
           printf '%s\n' "$(cat ../topic_subject.txt)" > ../output/tema.txt
           printf '%s | %s\n' "$(cat ../selected_provider.txt)" "$(cat ../selected_model.txt)" > ../output/modelo.txt
-          echo "video_path=$final" >> "$GITHUB_OUTPUT"
+          echo "video_path=output/$(basename "$final")" >> "$GITHUB_OUTPUT"
           echo "topic=$(cat ../topic_subject.txt)" >> "$GITHUB_OUTPUT"
           echo "Vídeo validado y preparado: $final"
 
