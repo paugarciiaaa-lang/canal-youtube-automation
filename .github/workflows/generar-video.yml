@@ -244,7 +244,7 @@ jobs:
               --video-language es-ES \
               --voice-name "es-ES-AlvaroNeural" \
               --voice-rate 0.95 \
-              --paragraph-number 10 \
+              --paragraph-number 16 \
               --video-aspect "16:9" \
               --video-fit-mode "cover" \
               --video-clip-duration 6 \
