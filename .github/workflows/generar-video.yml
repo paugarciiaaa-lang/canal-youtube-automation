@@ -114,20 +114,12 @@ jobs:
               print(f"Tema seleccionado: {subject}")
 
           prompt = """
-          Escribe un guion documental de 1.900-2.200 palabras para narración de aproximadamente 14-17 minutos en español de España. Desarrolla cada parte con profundidad, sin relleno ni repeticiones. El sistema rechazará guiones inferiores a 1.700 palabras ANTES de generar audio, descargar recursos o renderizar.
-
-          ESTRUCTURA: gancho de 20-30 segundos; contexto histórico y protagonistas; relato cronológico; pruebas, documentos y testimonios; hipótesis y evidencias; contradicciones y explicaciones alternativas; distinguir hechos confirmados, debatidos y desconocidos; consecuencias y estado actual; conclusión razonada y pregunta final al espectador.
-
-          REGLAS:
-          - Tono serio, inmersivo y natural. Nunca inventes hechos, fechas, nombres, citas, diálogos, documentos, fuentes ni enlaces.
-          - Prioriza archivos, documentos originales, registros oficiales, informes, resoluciones, estudios académicos y testimonios identificables. Contrasta datos importantes y atribuye las hipótesis.
-          - Termina con FUENTES Y REFERENCIAS (autor/organismo, fecha y URL concreta si se conoce). Lo no comprobado debe marcarse como REFERENCIAS PENDIENTES DE VERIFICACIÓN.
-          - Aporta contexto, análisis propio y valor educativo. Cada episodio debe ser específico y distinto, no un resumen genérico ni una plantilla repetida.
-          - Propón mapas, cronologías, documentos e ilustraciones propias del caso; evita repetir clips de stock. Registra URL, autor, fecha de descarga y licencia de cada recurso, y revisa derechos de terceros.
-          - Sin música salvo licencia comercial documentada. No des por confirmados los derechos comerciales de Edge TTS es-ES-AlvaroNeural.
-          - Trata tragedias, asesinatos y desapariciones con respeto: sin imágenes gráficas, morbo ni miniaturas sensacionalistas.
-          - Separa hechos, hipótesis, rumores y dudas. No presentes teorías conspirativas como hechos.
-          - Sin notas de cámara ni instrucciones al editor. Evita encabezados repetitivos y empieza directamente con el gancho, sin saludos.
+          GUION DOCUMENTAL DE 1.900-2.200 PALABRAS en español de España, para narración de 14-17 minutos. Nunca menos de 1.700 palabras. Desarrolla, no resumas ni rellenes.
+          ESTRUCTURA: gancho inicial; contexto y protagonistas; cronología detallada; pruebas, documentos y testimonios; hipótesis contrastadas; contradicciones y explicaciones alternativas; hechos confirmados frente a debates y lagunas; consecuencias y estado actual; conclusión razonada y pregunta final.
+          RIGOR: no inventes hechos, fechas, nombres, citas, diálogos, documentos, fuentes ni enlaces. Prioriza fuentes primarias, archivos oficiales, estudios académicos e informes identificables. Atribuye las hipótesis y distingue claramente hechos, teorías, rumores y dudas. Si no puedes verificar una referencia, márcala como pendiente; no la presentes como verificada.
+          VALOR: análisis propio, contexto específico y educativo; episodio original, no plantilla repetida. Sugiere recursos visuales pertinentes, mapas y cronologías, sin repetir clips de stock.
+          ESTILO: tono serio, inmersivo y natural. Sin notas de cámara, instrucciones al editor ni saludos. Trata tragedias con respeto, sin morbo ni imágenes gráficas. No presentes conspiraciones como hechos.
+          DERECHOS: no presupongas licencia comercial de voz, música o imágenes; evita música sin licencia documentada.
           """
 
           Path("topic_subject.txt").write_text(subject, encoding="utf-8")
@@ -187,7 +179,7 @@ jobs:
           openrouter_base_url = "https://openrouter.ai/api/v1"
           openrouter_model_name = "nvidia/nemotron-3-ultra-550b-a55b:free"
           subtitle_provider = "edge"
-          edge_tts_timeout = 90
+          edge_tts_timeout = 600
           ffmpeg_concat_timeout_seconds = 7200
           material_concurrency = 2
           video_clip_concurrency = 2
