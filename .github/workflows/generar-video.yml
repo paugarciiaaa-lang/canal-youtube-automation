@@ -251,17 +251,17 @@ jobs:
               --video-clip-duration 6 \
               --video-transition-mode "fade-in" \
               --bgm-type none \
-              --bgm-volume 0
-              --subtitle-enabled
-              --subtitle-display-mode word_by_word
-              --subtitle-animation pop_spring
-              --font-size 54
-              --text-fore-color "#FFE36E"
-              --stroke-color "#171717"
-              --stroke-width 3
-              --subtitle-position bottom
-              --subtitle-background-enabled
-              --subtitle-background-color "#171717"
+              --bgm-volume 0 \
+              --subtitle-enabled \
+              --subtitle-display-mode word_by_word \
+              --subtitle-animation pop_spring \
+              --font-size 54 \
+              --text-fore-color "#FFE36E" \
+              --stroke-color "#171717" \
+              --stroke-width 3 \
+              --subtitle-position bottom \
+              --subtitle-background-enabled \
+              --subtitle-background-color "#171717" \
               --rounded-subtitle-background \
               --n-threads 2 \
               --match-materials-to-script \
