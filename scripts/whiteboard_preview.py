@@ -69,52 +69,115 @@ def arrow(draw, a, b, p=1, color=RED, width=7):
         draw.polygon([b, left, right], fill=color)
 
 def stickman(draw, x, y, t, mood="worried", pose="thinking", scale=1.0, color=INK):
-    """Expressive hand-drawn stick figure; each scene can change mood and gesture."""
+    """Original 2D cartoon character with clothes, hair, expressive face and animated gestures."""
     s = scale
     bob = math.sin(t * math.pi * 2) * 3 * s
-    head_y = y + bob
-    r = 31 * s
-    circle(draw, (x-r, head_y-r, x+r, head_y+r), phase(t, 0, .2), color, max(3, int(5*s)))
-    # Eyes and brows are deliberately asymmetrical for a hand-drawn feel.
-    eye_y = head_y - 3*s
-    if mood == "worried":
-        draw.ellipse((x-13*s, eye_y-2*s, x-7*s, eye_y+5*s), fill=color)
-        draw.ellipse((x+7*s, eye_y-2*s, x+13*s, eye_y+5*s), fill=color)
-        stroke(draw, [(x-17*s,head_y-15*s),(x-7*s,head_y-19*s)], 1, color, max(2,int(3*s)))
-        stroke(draw, [(x+6*s,head_y-19*s),(x+17*s,head_y-14*s)], 1, color, max(2,int(3*s)))
-        draw.arc((x-8*s,head_y+9*s,x+10*s,head_y+24*s),190,345,fill=RED,width=max(2,int(3*s)))
-    elif mood == "surprised":
-        draw.ellipse((x-14*s,eye_y-5*s,x-5*s,eye_y+7*s),outline=color,width=max(2,int(3*s)))
-        draw.ellipse((x+5*s,eye_y-5*s,x+14*s,eye_y+7*s),outline=color,width=max(2,int(3*s)))
-        draw.ellipse((x-5*s,head_y+10*s,x+6*s,head_y+23*s),outline=RED,width=max(2,int(3*s)))
-    elif mood == "sad":
-        draw.ellipse((x-13*s,eye_y,x-7*s,eye_y+6*s),fill=color)
-        draw.ellipse((x+7*s,eye_y,x+13*s,eye_y+6*s),fill=color)
-        stroke(draw,[(x-14*s,head_y+17*s),(x,head_y+10*s),(x+14*s,head_y+17*s)],1,color,max(2,int(3*s)))
-    else:
-        draw.ellipse((x-12*s,eye_y,x-6*s,eye_y+6*s),fill=color)
-        draw.ellipse((x+6*s,eye_y,x+12*s,eye_y+6*s),fill=color)
-        draw.arc((x-12*s,head_y+3*s,x+12*s,head_y+23*s),5,175,fill=GREEN,width=max(2,int(3*s)))
-    # Torso
-    stroke(draw,[(x,head_y+r),(x,head_y+126*s)],1,color,max(4,int(7*s)))
-    shoulder=(x,head_y+65*s)
+    top = y + bob
+    variant = int(x // 100) % 3
+    skin = [(238, 190, 151), (191, 137, 103), (244, 205, 170)][variant]
+    hair = [(48, 39, 34), (72, 54, 39), (38, 42, 48)][variant]
+    shirt = [BLUE, (183, 83, 65), (74, 119, 88)][variant]
+    trousers = [(48, 57, 72), (72, 67, 61), (55, 65, 75)][variant]
+    outline = (35, 34, 33)
+    sw = max(2, int(4*s))
+
+    # Legs and shoes, drawn behind the body.
+    stride = 12 * math.sin(t * math.pi * 2) * s
+    hip_y = top + 145*s
+    draw.polygon([(x-17*s,hip_y),(x-2*s,hip_y),(x-24*s,top+218*s+stride),(x-42*s,top+218*s+stride)], fill=trousers, outline=outline)
+    draw.polygon([(x+2*s,hip_y),(x+18*s,hip_y),(x+39*s,top+218*s-stride),(x+22*s,top+218*s-stride)], fill=trousers, outline=outline)
+    draw.ellipse((x-51*s,top+210*s+stride,x-20*s,top+225*s+stride),fill=(42,43,45),outline=outline,width=sw)
+    draw.ellipse((x+17*s,top+210*s-stride,x+49*s,top+225*s-stride),fill=(42,43,45),outline=outline,width=sw)
+
+    # Neck and torso: soft, slightly irregular cartoon silhouette.
+    draw.rounded_rectangle((x-11*s,top+49*s,x+12*s,top+78*s),radius=int(6*s),fill=skin,outline=outline,width=sw)
+    body=[(x-15*s,top+67*s),(x+15*s,top+67*s),(x+31*s,top+139*s),(x+18*s,top+157*s),(x-20*s,top+157*s),(x-32*s,top+139*s)]
+    draw.polygon(body,fill=shirt,outline=outline)
+    draw.line([(x-15*s,top+77*s),(x-21*s,top+136*s)],fill=(255,255,255),width=max(1,int(2*s)))
+    draw.line([(x+15*s,top+77*s),(x+21*s,top+136*s)],fill=(255,255,255),width=max(1,int(2*s)))
+    # Small collar detail.
+    draw.line([(x-9*s,top+70*s),(x,top+83*s),(x+9*s,top+70*s)],fill=outline,width=sw)
+
+    # Arms with sleeves, elbows and hands. Gestures animate subtly.
+    shoulder_y=top+83*s
+    wave=9*math.sin(t*math.pi*4)*s
     if pose == "thinking":
-        stroke(draw,[shoulder,(x-43*s,head_y+100*s),(x-15*s,head_y+40*s)],phase(t,.12),color,max(3,int(6*s)))
-        stroke(draw,[shoulder,(x+40*s,head_y+94*s),(x+17*s,head_y+31*s)],phase(t,.22),color,max(3,int(6*s)))
+        left_elbow=(x-43*s,top+116*s)
+        left_hand=(x-12*s,top+69*s)
+        right_elbow=(x+43*s,top+111*s)
+        right_hand=(x+18*s,top+48*s)
     elif pose == "surprised":
-        stroke(draw,[shoulder,(x-53*s,head_y+25*s)],phase(t,.12),color,max(3,int(6*s)))
-        stroke(draw,[shoulder,(x+53*s,head_y+25*s)],phase(t,.2),color,max(3,int(6*s)))
+        left_elbow=(x-48*s,top+54*s)
+        left_hand=(x-58*s,top+22*s)
+        right_elbow=(x+48*s,top+54*s)
+        right_hand=(x+58*s,top+22*s)
     elif pose == "pointing":
-        stroke(draw,[shoulder,(x-38*s,head_y+100*s)],phase(t,.12),color,max(3,int(6*s)))
-        stroke(draw,[shoulder,(x+78*s,head_y+27*s)],phase(t,.22),BLUE,max(3,int(6*s)))
+        left_elbow=(x-43*s,top+119*s)
+        left_hand=(x-48*s,top+145*s)
+        right_elbow=(x+48*s,top+73*s)
+        right_hand=(x+91*s,top+43*s)
     else:
-        wave=10*math.sin(t*math.pi*4)*s
-        stroke(draw,[shoulder,(x-48*s,head_y+25*s)],phase(t,.12),color,max(3,int(6*s)))
-        stroke(draw,[shoulder,(x+52*s,head_y+28*s+wave)],phase(t,.22),color,max(3,int(6*s)))
-    # Legs, slightly offset to avoid a rigid pictogram look.
-    stride=18*math.sin(t*math.pi*2)*s
-    stroke(draw,[(x,head_y+126*s),(x-34*s+stride,head_y+202*s),(x-57*s+stride,head_y+205*s)],phase(t,.32),color,max(4,int(7*s)))
-    stroke(draw,[(x,head_y+126*s),(x+34*s-stride,head_y+202*s),(x+57*s-stride,head_y+205*s)],phase(t,.42),color,max(4,int(7*s)))
+        left_elbow=(x-49*s,top+72*s)
+        left_hand=(x-61*s,top+44*s)
+        right_elbow=(x+48*s,top+73*s)
+        right_hand=(x+62*s,top+39*s+wave)
+    for shoulder,elbow,hand in [
+        ((x-20*s,shoulder_y),left_elbow,left_hand),
+        ((x+20*s,shoulder_y),right_elbow,right_hand)
+    ]:
+        draw.line([shoulder,elbow,hand],fill=outline,width=max(7,int(17*s)),joint="curve")
+        draw.line([shoulder,elbow,hand],fill=skin,width=max(4,int(11*s)),joint="curve")
+        draw.ellipse((hand[0]-7*s,hand[1]-7*s,hand[0]+7*s,hand[1]+7*s),fill=skin,outline=outline,width=sw)
+        # Tiny fingers make the hand readable at larger sizes.
+        if s > .8:
+            draw.line([(hand[0],hand[1]),(hand[0]+3*s,hand[1]-9*s)],fill=outline,width=max(1,int(2*s)))
+
+    # Large oval head, ears and hair.
+    head=(x-36*s,top-30*s,x+36*s,top+58*s)
+    draw.ellipse(head,fill=skin,outline=outline,width=sw)
+    draw.ellipse((x-41*s,top+7*s,x-29*s,top+25*s),fill=skin,outline=outline,width=sw)
+    draw.ellipse((x+29*s,top+7*s,x+41*s,top+25*s),fill=skin,outline=outline,width=sw)
+    # Hair cap and side locks; slight variation by character.
+    draw.pieslice((x-38*s,top-37*s,x+38*s,top+34*s),180,360,fill=hair,outline=outline,width=sw)
+    if variant == 0:
+        draw.polygon([(x-37*s,top+1*s),(x-30*s,top-27*s),(x-13*s,top-36*s),(x-5*s,top-20*s),(x+9*s,top-37*s),(x+30*s,top-24*s),(x+38*s,top+5*s)],fill=hair,outline=outline)
+    elif variant == 1:
+        draw.ellipse((x-43*s,top-22*s,x-17*s,top+30*s),fill=hair,outline=outline,width=sw)
+        draw.ellipse((x+16*s,top-25*s,x+43*s,top+30*s),fill=hair,outline=outline,width=sw)
+    else:
+        draw.polygon([(x-36*s,top+2*s),(x-29*s,top-31*s),(x+18*s,top-35*s),(x+37*s,top-3*s),(x+26*s,top+8*s)],fill=hair,outline=outline)
+
+    # Expressive eyes, brows and mouth.
+    eye_y=top+12*s
+    if mood == "worried":
+        draw.ellipse((x-19*s,eye_y-5*s,x-7*s,eye_y+10*s),fill=(255,255,250),outline=outline,width=max(1,int(2*s)))
+        draw.ellipse((x+7*s,eye_y-5*s,x+19*s,eye_y+10*s),fill=(255,255,250),outline=outline,width=max(1,int(2*s)))
+        draw.ellipse((x-13*s,eye_y+1*s,x-7*s,eye_y+8*s),fill=outline)
+        draw.ellipse((x+7*s,eye_y+1*s,x+13*s,eye_y+8*s),fill=outline)
+        draw.line([(x-22*s,top+1*s),(x-8*s,top-5*s)],fill=outline,width=sw)
+        draw.line([(x+8*s,top-5*s),(x+22*s,top+1*s)],fill=outline,width=sw)
+        draw.arc((x-9*s,top+32*s,x+10*s,top+52*s),195,345,fill=outline,width=max(2,int(3*s)))
+    elif mood == "surprised":
+        for ex in (x-13*s,x+13*s):
+            draw.ellipse((ex-9*s,eye_y-9*s,ex+9*s,eye_y+13*s),fill=(255,255,250),outline=outline,width=sw)
+            draw.ellipse((ex-3*s,eye_y-1*s,ex+3*s,eye_y+7*s),fill=outline)
+        draw.ellipse((x-7*s,top+33*s,x+8*s,top+53*s),fill=(75,35,32),outline=outline,width=sw)
+    elif mood == "sad":
+        draw.ellipse((x-18*s,eye_y-2*s,x-7*s,eye_y+10*s),fill=(255,255,250),outline=outline,width=sw)
+        draw.ellipse((x+7*s,eye_y-2*s,x+18*s,eye_y+10*s),fill=(255,255,250),outline=outline,width=sw)
+        draw.line([(x-22*s,top+1*s),(x-8*s,top+6*s)],fill=outline,width=sw)
+        draw.line([(x+8*s,top+6*s),(x+22*s,top+1*s)],fill=outline,width=sw)
+        draw.arc((x-12*s,top+34*s,x+12*s,top+55*s),195,345,fill=outline,width=sw)
+    else:
+        for ex in (x-13*s,x+13*s):
+            draw.ellipse((ex-8*s,eye_y-3*s,ex+8*s,eye_y+10*s),fill=(255,255,250),outline=outline,width=sw)
+            draw.ellipse((ex-3*s,eye_y+1*s,ex+3*s,eye_y+7*s),fill=outline)
+        draw.arc((x-13*s,top+29*s,x+13*s,top+52*s),5,175,fill=outline,width=sw)
+
+    # A soft cheek highlight gives the faces a finished cartoon look.
+    if mood in ("worried","surprised"):
+        draw.ellipse((x-27*s,top+29*s,x-18*s,top+35*s),fill=(224,137,122))
+        draw.ellipse((x+18*s,top+29*s,x+27*s,top+35*s),fill=(224,137,122))
 
 def magnifier(draw, x, y, p=1, color=BLUE):
     circle(draw,(x-38,y-38,x+38,y+38),p,color,7)
