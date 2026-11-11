@@ -108,45 +108,20 @@ jobs:
               print(f"Tema seleccionado: {subject}")
 
           prompt = """
-          Escribe un guion documental de entre 2.300 y 2.600 palabras, pensado para
-          una narración de aproximadamente 15 a 18 minutos en español de España.
-          La extensión es un requisito: no entregues un resumen ni un texto breve.
-          Desarrolla los 10 bloques con información sustancial, transiciones naturales
-          y sin repetir datos ni inventar contenido para alcanzar la longitud.
+          Escribe un guion documental de 2.300-2.600 palabras para narración de 15-18 minutos en español de España. Desarrolla cada parte con profundidad, sin relleno ni repeticiones.
 
-          ESTRUCTURA:
-          1. Gancho narrativo potente durante los primeros 20-30 segundos.
-          2. Contexto: personas, lugares, fechas y situación histórica.
-          3. Relato cronológico, claro y detallado de los acontecimientos.
-          4. Investigación: pruebas, documentos, testimonios y datos contrastables.
-          5. Hipótesis principales, indicando quién las propuso y en qué se basan.
-          6. Contradicciones, errores conocidos y explicaciones alternativas.
-          7. Qué está confirmado, qué es discutido y qué se desconoce.
-          8. Consecuencias del caso y estado actual de la investigación.
-          9. Conclusión narrativa, sin presentar especulaciones como certezas.
-          10. Cierre memorable y una pregunta concreta para fomentar comentarios.
+          ESTRUCTURA: gancho de 20-30 segundos; contexto histórico y protagonistas; relato cronológico; pruebas, documentos y testimonios; hipótesis y evidencias; contradicciones y explicaciones alternativas; distinguir hechos confirmados, debatidos y desconocidos; consecuencias y estado actual; conclusión razonada y pregunta final al espectador.
 
-          REGLAS EDITORIALES DE CASPITAS:
-          - Español natural de España, tono documental, serio, inmersivo y misterioso.
-          - No inventes hechos, fechas, nombres, citas, documentos ni diálogos.
-          - No presentes leyendas, teorías o rumores como hechos demostrados.
-          - El documental debe aportar investigación, contexto, análisis propio y valor educativo; no ser un resumen genérico de IA.
-          - Prioriza documentos originales, archivos, registros oficiales, informes, resoluciones judiciales, publicaciones académicas, entrevistas y testimonios identificables.
-          - No inventes fuentes, enlaces ni citas. Contrasta afirmaciones importantes y separa hechos, hipótesis atribuidas y aspectos desconocidos.
-          - Añade al final una sección FUENTES Y REFERENCIAS con autor u organismo, fecha y URL concreta cuando se conozca. Si no puedes verificarlas, indica REFERENCIAS PENDIENTES DE VERIFICACIÓN.
-          - Compara hipótesis, explica contradicciones y evalúa la solidez de las pruebas; termina con conclusiones razonadas.
-          - Cada episodio debe tener historia, estructura, datos y valor propios; evita vídeos intercambiables y guiones masivos basados en una plantilla.
-          - Propón mapas, cronologías, documentos e ilustraciones whiteboard específicos para el caso; evita repetir continuamente los mismos clips de stock.
-          - Registra URL, autor, fecha de descarga y licencia de cada recurso visual. Pixabay permite determinados usos comerciales, pero revisa restricciones y derechos de terceros.
-          - No añadas música por defecto. Solo se incorporará una pista con licencia comercial documentada.
-          - La voz Edge TTS es-ES-AlvaroNeural NO tiene autorización comercial confirmada por defecto. No afirmes que está licenciada; requiere confirmación escrita o sustitución por un proveedor con licencia comercial explícita.
-          - En asesinatos, desapariciones y tragedias, usa enfoque documental respetuoso; evita imágenes gráficas, detalles morbosos y miniaturas impactantes.
-          - Evita lenguaje sensacionalista y afirmaciones conspirativas presentadas como hechos.
-          - Cuando haya versiones contradictorias, explica brevemente la diferencia.
-          - Evita afirmaciones sensacionalistas que no estén respaldadas.
-          - No incluyas instrucciones visuales, etiquetas de cámara ni notas para el editor.
-          - No escribas títulos de sección repetitivos; el texto debe sonar fluido al narrarlo.
-          - Empieza directamente con el gancho, sin saludos ni presentación genérica.
+          REGLAS:
+          - Tono serio, inmersivo y natural. Nunca inventes hechos, fechas, nombres, citas, diálogos, documentos, fuentes ni enlaces.
+          - Prioriza archivos, documentos originales, registros oficiales, informes, resoluciones, estudios académicos y testimonios identificables. Contrasta datos importantes y atribuye las hipótesis.
+          - Termina con FUENTES Y REFERENCIAS (autor/organismo, fecha y URL concreta si se conoce). Lo no comprobado debe marcarse como REFERENCIAS PENDIENTES DE VERIFICACIÓN.
+          - Aporta contexto, análisis propio y valor educativo. Cada episodio debe ser específico y distinto, no un resumen genérico ni una plantilla repetida.
+          - Propón mapas, cronologías, documentos e ilustraciones propias del caso; evita repetir clips de stock. Registra URL, autor, fecha de descarga y licencia de cada recurso, y revisa derechos de terceros.
+          - Sin música salvo licencia comercial documentada. No des por confirmados los derechos comerciales de Edge TTS es-ES-AlvaroNeural.
+          - Trata tragedias, asesinatos y desapariciones con respeto: sin imágenes gráficas, morbo ni miniaturas sensacionalistas.
+          - Separa hechos, hipótesis, rumores y dudas. No presentes teorías conspirativas como hechos.
+          - Sin notas de cámara ni instrucciones al editor. Evita encabezados repetitivos y empieza directamente con el gancho, sin saludos.
           """
 
           Path("topic_subject.txt").write_text(subject, encoding="utf-8")
