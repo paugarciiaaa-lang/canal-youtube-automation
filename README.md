@@ -58,3 +58,11 @@ python -m unittest discover -s tests -v
 ```
 
 El workflow de GitHub Actions ejecuta las pruebas de la cola cuando cambia ese código.
+
+## Protección de monetización y calidad editorial
+
+La política completa está en [MONETIZATION_POLICY.md](MONETIZATION_POLICY.md). El prompt de generación exige investigación contrastable, separación de hechos e hipótesis, referencias, análisis original, recursos visuales específicos y tratamiento documental respetuoso de tragedias. La música permanece desactivada.
+
+**Riesgos pendientes:** el pipeline no verifica de forma independiente cada fuente; no crea todavía un inventario completo de licencias por clip; y la autorización comercial de Edge TTS no está confirmada. Por tanto, no puede certificar que un vídeo sea monetizable. Cada ejecución debe mostrar estos puntos como revisión pendiente.
+
+Referencias oficiales: [políticas de monetización de YouTube](https://support.google.com/youtube/answer/1311392), [contenido adecuado para anunciantes](https://support.google.com/youtube/answer/6162278) y [licencia de Pixabay](https://pixabay.com/service/license-summary/).
