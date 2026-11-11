@@ -67,6 +67,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Instalar Pillow para crear miniaturas
+        if: steps.local_time.outputs.run_now == 'true'
+        run: python -m pip install pillow
+
       - name: Elegir tema sin repetir innecesariamente
         if: steps.local_time.outputs.run_now == 'true'
         env:
@@ -351,6 +355,17 @@ jobs:
           printf '%s | %s\n' "$(cat ../selected_provider.txt)" "$(cat ../selected_model.txt)" > ../output/modelo.txt
           echo "video_path=output/$(basename "$final")" >> "$GITHUB_OUTPUT"
           echo "topic=$(cat ../topic_subject.txt)" >> "$GITHUB_OUTPUT"
+          script_file="$(find storage/tasks -type f -iname '*script*.txt' -size +2k -printf '%s %p\\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+          if [ -z "$script_file" ]; then
+            script_file="$(find storage/tasks -type f -iname '*.srt' -size +2k -printf '%s %p\\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+          fi
+          if [ -n "$script_file" ] && [ -f "$script_file" ]; then
+            cp "$script_file" ../output/script_source.txt
+            echo "Se ha localizado el guion/subtítulo para crear metadatos basados en el contenido."
+          else
+            printf '%s\\n' "$(cat ../topic_subject.txt)" > ../output/script_source.txt
+            echo "::warning::No se ha localizado el texto del guion; los metadatos usarán el tema como respaldo."
+          fi
           echo "Vídeo validado y preparado: $final"
 
       - name: Guardar tema en el historial para evitar repeticiones
@@ -387,30 +402,21 @@ jobs:
       - name: Crear título, descripción y miniatura whiteboard
         id: youtube_assets
         if: steps.local_time.outputs.run_now == 'true' && success()
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           set -euo pipefail
           python3 scripts/create_youtube_assets.py
-          mkdir -p thumbnails
-          thumbnail="thumbnails/caspitas-$GITHUB_RUN_NUMBER.png"
-          cp output/thumbnail.png "$thumbnail"
-          # Public URL so Upload-Post can set the custom YouTube thumbnail.
-          echo "thumbnail_url=https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_REF_NAME/$thumbnail" >> "$GITHUB_OUTPUT"
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
           import json
           from pathlib import Path
           data = json.loads(Path("output/metadata.json").read_text(encoding="utf-8"))
-          # Keep title safe for the JSON passed to the publishing action.
-          title = data["title"].replace('"', "").replace("\\n", " ").strip()
-          print("title=" + title)
-          print("description<<CASPITAS_DESCRIPTION")
-          print(data["description"])
-          print("CASPITAS_DESCRIPTION")
+          print("title=" + data["title"].replace("\\n", " ").strip())
+          print("title_json=" + json.dumps(data["title"], ensure_ascii=False))
+          print("description_json=" + json.dumps(data["description"], ensure_ascii=False))
+          print("tags_json=" + json.dumps(data["tags"], ensure_ascii=False))
+          print("thumbnail_path=output/thumbnail.png")
           PY
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$thumbnail"
-          git commit -m "Add Caspitas whiteboard thumbnail for run $GITHUB_RUN_NUMBER"
-          git push origin "HEAD:$GITHUB_REF_NAME"
 
       - name: Calcular publicación para mañana a las 21:00 (hora de España)
         id: publish_time
@@ -430,12 +436,16 @@ jobs:
           type: video
           platforms: youtube
           media: ${{ steps.prepared_video.outputs.video_path }}
-          text: ${{ steps.youtube_assets.outputs.description }}
+          text: ${{ steps.youtube_assets.outputs.title }}
           scheduled-date: ${{ steps.publish_time.outputs.scheduled_date }}
           timezone: Europe/Madrid
           extra: |
             {
-              "privacyStatus": "public",\n              "youtubeTitle": "${{ steps.youtube_assets.outputs.title }}",\n              "youtubeThumbnailUrl": "${{ steps.youtube_assets.outputs.thumbnail_url }}"
+              "privacyStatus": "public",
+              "youtube_title": ${{ steps.youtube_assets.outputs.title_json }},
+              "youtube_description": ${{ steps.youtube_assets.outputs.description_json }},
+              "tags": ${{ steps.youtube_assets.outputs.tags_json }},
+              "thumbnail": "${{ steps.youtube_assets.outputs.thumbnail_path }}"
             }
 
       - name: Resumen de la generación
