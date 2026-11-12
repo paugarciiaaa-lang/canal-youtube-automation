@@ -3,6 +3,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+# Pillow is imported lazily by the renderer; parser/classifier tests need no image dependency.
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import hybrid_visual_engine as engine
