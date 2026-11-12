@@ -138,76 +138,98 @@ def draw_stickman(d, t: float, x=1450, y=440, scale=1.0, pose="investigate"):
     d.ellipse((hand1[0]-18,hand1[1]-18,hand1[0]+18,hand1[1]+18), fill=(211,164,127))
     d.ellipse((hand2[0]-18,hand2[1]-18,hand2[0]+18,hand2[1]+18), fill=(211,164,127))
 
+def paste_layered_asset(im, scene, t, box):
+    from PIL import Image, ImageOps, ImageFilter, ImageDraw
+    path=scene.get("asset_path")
+    if not path or not Path(path).is_file(): return False
+    source=Image.open(path).convert("RGB")
+    x0,y0,x1,y1=box; w,h=x1-x0,y1-y0
+    background=ImageOps.fit(source,(w,h),method=Image.Resampling.LANCZOS).filter(ImageFilter.GaussianBlur(13))
+    dx=int(math.sin(t*math.tau)*9)
+    im.alpha_composite(background.convert("RGBA"),(x0+dx,y0))
+    foreground=ImageOps.contain(source,(int(w*.82),int(h*.82)),method=Image.Resampling.LANCZOS)
+    px=x0+(w-foreground.width)//2+int(math.sin(t*math.tau)*15)
+    py=y0+(h-foreground.height)//2+int(math.sin(t*math.tau+.7)*7)
+    shade=Image.new("RGBA",(foreground.width+26,foreground.height+26),(0,0,0,0))
+    sd=ImageDraw.Draw(shade); sd.rounded_rectangle((8,8,foreground.width+18,foreground.height+18),radius=14,fill=(0,0,0,150))
+    im.alpha_composite(shade,(px-13,py-13))
+    im.alpha_composite(foreground.convert("RGBA"),(px,py))
+    return True
+
 def render_scene(scene: dict, folder: Path, seconds: float) -> Path:
     from PIL import Image, ImageDraw
     folder.mkdir(parents=True, exist_ok=True)
-    total = FPS  # one-second animated loop; FFmpeg repeats it for the full scene window
+    total = FPS
     kind, excerpt = scene["type"], scene["excerpt"]
     for i in range(total):
-        t = i / max(1, total-1)
-        im = base_frame(i, total)
-        d = ImageDraw.Draw(im)
-        d.rounded_rectangle((120, 205, 760, 275), radius=18, fill=(35, 51, 69, 255), outline=(72, 93, 115, 255), width=2)
-        d.text((150, 222), scene["label"].upper(), font=font(28, True), fill=AMBER)
-        if kind in ("stickman", "reconstruction"):
-            d.text((135, 340), "RECREACIÓN 2D", font=font(25, True), fill=CYAN)
-            d.text((135, 405), "Representación visual,", font=font(34), fill=INK)
-            d.text((135, 455), "no imagen de archivo.", font=font(34), fill=INK)
-            d.polygon([(1120,300),(1700,300),(1830,820),(990,820)], fill=(27,43,60,255), outline=(79,101,124,255))
-            d.rectangle((1320,390,1600,820), fill=(15,26,39,255), outline=(117,137,154,255), width=8)
-            d.ellipse((1535,590,1560,615), fill=AMBER)
-            draw_stickman(d, t, x=1110+int(22*math.sin(t*math.tau)), y=365, scale=1, pose="walk" if kind=="reconstruction" else "investigate")
-            if kind == "reconstruction":
-                d.text((1370, 340), "SECUENCIA ILUSTRADA", font=font(24, True), fill=RED)
-            text_block(d, (140, 650), excerpt, 30, INK, 48, 8)
-        elif kind == "map":
-            d.text((140, 340), "ESQUEMA DE LOCALIZACIÓN", font=font(30, True), fill=CYAN)
-            d.rounded_rectangle((150, 410, 1710, 790), radius=34, fill=(20,37,54,255), outline=(76,103,128,255), width=4)
-            for k in range(8):
-                yy = 455 + k*42
-                d.line((220, yy, 1630, yy), fill=(42,65,85,255), width=2)
-            for k in range(11):
-                xx = 250 + k*125
-                d.line((xx, 440, xx-80, 760), fill=(42,65,85,255), width=2)
-            px = int(520 + 700*t)
-            py = int(590 + 22*math.sin(t*math.tau))
-            d.line((420,650,px,py), fill=AMBER, width=12)
-            d.ellipse((px-30,py-30,px+30,py+30), fill=RED, outline=INK, width=5)
-            d.ellipse((px-12,py-12,px+12,py+12), fill=INK)
-            text_block(d, (220, 815), excerpt, 28, INK, 72, 7)
-            d.text((220, 870), "DIAGRAMA ORIENTATIVO · NO A ESCALA", font=font(18, True), fill=MUTED)
-        elif kind == "timeline":
-            d.text((145, 355), "CRONOLOGÍA", font=font(32, True), fill=CYAN)
-            d.line((230, 590, 1660, 590), fill=(101,125,148,255), width=8)
-            years = scene.get("years", []) or ["ANTES", "DESPUÉS"]
-            count = min(4, len(years))
-            for j, year in enumerate(years[:count]):
-                px = 280 + j * (1320 // max(1,count-1)) if count > 1 else 940
-                pulse = int(20*abs(math.sin(t*math.tau+j)))
-                d.ellipse((px-28-pulse//4,562-pulse//4,px+28+pulse//4,618+pulse//4), fill=AMBER, outline=INK, width=4)
-                d.text((px-90, 485), year, font=font(34, True), fill=INK)
-            text_block(d, (220, 720), excerpt, 32, INK, 70, 10)
-        elif kind == "evidence":
-            d.text((145, 350), "PISTA / CONTEXTO", font=font(30, True), fill=CYAN)
-            d.rounded_rectangle((250, 420, 1640, 825), radius=12, fill=(225,222,209,255), outline=(75,70,62,255), width=5)
-            d.rectangle((285,455,1605,505), fill=(44,53,63,255))
-            d.text((320,466), "CASO · NOTA VISUAL", font=font(24, True), fill=(244,240,226))
-            text_block(d, (330, 565), excerpt, 42, (37,43,49), 48, 18)
-            d.text((330, 755), "RECREACIÓN GRÁFICA · NO ES UN DOCUMENTO ORIGINAL", font=font(21, True), fill=(142,55,48))
-            d.line((1430, 535, 1550, 655), fill=RED, width=10)
-            d.line((1550, 535, 1430, 655), fill=RED, width=10)
+        t=i/max(1,total-1)
+        im=base_frame(i,total)
+        d=ImageDraw.Draw(im)
+        d.rounded_rectangle((120,205,760,275),radius=18,fill=(35,51,69,255),outline=(72,93,115,255),width=2)
+        d.text((150,222),scene["label"].upper(),font=font(28,True),fill=AMBER)
+        attribution=(scene.get("asset") or {}).get("attribution") or (scene.get("asset") or {}).get("license") or ""
+        if kind in ("stickman","reconstruction"):
+            d.text((135,340),"RECREACIÓN 2D",font=font(25,True),fill=CYAN)
+            d.text((135,405),"Representación visual,",font=font(34),fill=INK)
+            d.text((135,455),"no imagen de archivo.",font=font(34),fill=INK)
+            d.polygon([(1120,300),(1700,300),(1830,820),(990,820)],fill=(27,43,60,255),outline=(79,101,124,255))
+            d.rectangle((1320,390,1600,820),fill=(15,26,39,255),outline=(117,137,154,255),width=8)
+            d.ellipse((1535,590,1560,615),fill=AMBER)
+            draw_stickman(d,t,x=1110+int(22*math.sin(t*math.tau)),y=365,scale=1,pose="walk" if kind=="reconstruction" else "investigate")
+            if kind=="reconstruction": d.text((1370,340),"SECUENCIA ILUSTRADA",font=font(24,True),fill=RED)
+            text_block(d,(140,650),excerpt,30,INK,48,8)
+        elif kind=="map":
+            d.text((140,340),"LOCALIZACIÓN CON FUENTE CARTOGRÁFICA",font=font(30,True),fill=CYAN)
+            if paste_layered_asset(im,scene,t,(175,390,1745,805)):
+                d=ImageDraw.Draw(im)
+                d.text((190,825),attribution[:115] or "Fuente cartográfica registrada en el manifiesto",font=font(18,True),fill=INK)
+            else:
+                d.rounded_rectangle((170,420,1745,790),radius=24,fill=(20,37,54,255),outline=RED,width=4)
+                d.text((235,520),"MAPA NO VERIFICADO",font=font(42,True),fill=RED)
+                d.text((235,600),"No se dibuja una ubicación inventada.",font=font(32),fill=INK)
+                text_block(d,(235,680),excerpt,26,INK,75,8)
+        elif kind=="timeline":
+            d.text((145,355),"CRONOLOGÍA · FECHAS DEL RELATO",font=font(32,True),fill=CYAN)
+            d.line((230,590,1660,590),fill=(101,125,148,255),width=8)
+            years=scene.get("years",[]) or ["FECHA NO INDICADA"]
+            count=min(4,len(years))
+            for j,year in enumerate(years[:count]):
+                px=280+j*(1320//max(1,count-1)) if count>1 else 940
+                pulse=int(20*abs(math.sin(t*math.tau+j)))
+                d.ellipse((px-28-pulse//4,562-pulse//4,px+28+pulse//4,618+pulse//4),fill=AMBER,outline=INK,width=4)
+                d.text((px-90,485),year,font=font(34,True),fill=INK)
+            text_block(d,(220,720),excerpt,32,INK,70,10)
+        elif kind=="evidence":
+            d.text((145,350),"DOCUMENTO / PISTA",font=font(30,True),fill=CYAN)
+            if paste_layered_asset(im,scene,t,(220,410,1660,820)):
+                d=ImageDraw.Draw(im)
+                d.text((225,835),("FUENTE: "+attribution)[:115],font=font(17,True),fill=INK)
+                d.text((225,865),"Candidato de archivo; autenticidad pendiente de revisión editorial.",font=font(18,True),fill=AMBER)
+            else:
+                d.rounded_rectangle((250,420,1640,825),radius=12,fill=(225,222,209,255),outline=(75,70,62,255),width=5)
+                d.rectangle((285,455,1605,505),fill=(44,53,63,255))
+                d.text((320,466),"RECREACIÓN GRÁFICA · NO ES ORIGINAL",font=font(24,True),fill=(244,240,226))
+                text_block(d,(330,565),excerpt,42,(37,43,49),48,18)
+                d.text((330,755),"ILUSTRACIÓN DEL CONTENIDO NARRADO",font=font(21,True),fill=(142,55,48))
+        elif kind in ("photo","parallax"):
+            d.text((145,350),"IMAGEN DOCUMENTAL · MOVIMIENTO POR CAPAS",font=font(29,True),fill=CYAN)
+            if paste_layered_asset(im,scene,t,(190,390,1720,815)):
+                d=ImageDraw.Draw(im)
+                d.text((195,830),("FUENTE: "+attribution)[:115],font=font(17,True),fill=INK)
+                d.text((195,860),"Parallax 2.5D aproximado: fondo difuminado + capa frontal independiente.",font=font(18),fill=AMBER)
+            else:
+                d.text((220,500),"RECURSO VISUAL NO ENCONTRADO",font=font(40,True),fill=RED)
+                text_block(d,(220,600),excerpt,32,INK,70,10)
         else:
-            d.text((145, 350), "DATO DE LA NARRACIÓN", font=font(30, True), fill=CYAN)
-            focus = scene.get("focus", "DETALLE")[:18]
-            scale = 1 + .045*math.sin(t*math.tau)
-            fnt = font(int(112*scale), True)
-            box = d.textbbox((0,0), focus, font=fnt)
-            d.text(((W-(box[2]-box[0]))//2, 460), focus, font=fnt, fill=AMBER)
-            text_block(d, (250, 700), excerpt, 34, INK, 68, 10)
-        # Keep the bottom subtitle-safe band transparent so the original
-        # burned-in word captions remain in sync with the untouched narration.
-        im.resize((W//2, H//2), Image.Resampling.LANCZOS).save(folder / f"frame_{i:05d}.png")
-    clip = folder.with_suffix(".mov")
+            d.text((145,350),"DATO / IDEA DE LA NARRACIÓN",font=font(30,True),fill=CYAN)
+            focus=scene.get("focus","DETALLE")[:18] or "DETALLE"
+            scale=1+.045*math.sin(t*math.tau)
+            fnt=font(int(112*scale),True)
+            box=d.textbbox((0,0),focus,font=fnt)
+            d.text(((W-(box[2]-box[0]))//2,460),focus,font=fnt,fill=AMBER)
+            text_block(d,(250,700),excerpt,34,INK,68,10)
+        im.resize((W//2,H//2),Image.Resampling.LANCZOS).save(folder/f"frame_{i:05d}.png")
+    clip=folder.with_suffix(".mov")
     run(["ffmpeg","-y","-loglevel","error","-framerate",str(FPS),"-i",str(folder/"frame_%05d.png"),
          "-c:v","qtrle","-pix_fmt","argb","-an","-video_track_timescale","12288",str(clip)])
     return clip
@@ -261,6 +283,7 @@ def main():
     ap.add_argument("--storyboard", required=True, type=Path)
     ap.add_argument("--interval", type=float, default=55.0)
     ap.add_argument("--scene-seconds", type=float, default=4.5)
+    ap.add_argument("--plan", type=Path, default=None)
     args = ap.parse_args()
     source, srt = args.video.resolve(), args.srt.resolve()
     if not source.is_file() or not srt.is_file():
@@ -270,7 +293,32 @@ def main():
     if not any(s.get("codec_type")=="audio" for s in meta.get("streams",[])):
         raise SystemExit("El vídeo original no contiene audio.")
     cues = read_srt(srt)
-    scenes = plan(cues, duration, args.interval, args.scene_seconds)
+    if args.plan and args.plan.is_file():
+        semantic=json.loads(args.plan.read_text(encoding="utf-8"))
+        type_map={"photo":"photo","map":"map","document":"evidence","reconstruction":"reconstruction",
+                  "stickman":"stickman","timeline":"timeline","motion_graphic":"motion","parallax":"parallax"}
+        scenes=[]
+        for item in semantic.get("scenes",[]):
+            kind=type_map.get(item.get("type"))
+            if not kind: continue
+            start=max(0.0,float(item.get("start",0)))
+            length=min(float(item.get("duration",args.scene_seconds)),args.scene_seconds+1)
+            if start+length>=duration-3: continue
+            scenes.append({**item,"type":kind,"start":round(start,3),"duration":round(length,3),
+                           "label":item.get("label") or "Contexto",
+                           "excerpt":item.get("excerpt") or "Fragmento del relato",
+                           "years":item.get("years",[]),"focus":item.get("focus","")})
+        scenes.sort(key=lambda x:x["start"])
+        # Avoid visual overlays colliding with each other.
+        spaced=[]
+        for scene in scenes:
+            if spaced and scene["start"] < spaced[-1]["start"]+spaced[-1]["duration"]+2: continue
+            spaced.append(scene)
+        scenes=spaced
+        planner="semantic"
+    else:
+        scenes=plan(cues,duration,args.interval,args.scene_seconds)
+        planner="heuristic_fallback"
     if len(scenes) < 3:
         raise SystemExit("No hay suficientes escenas/subtítulos para crear una prueba híbrida fiable.")
     args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -313,7 +361,8 @@ def main():
     if drift > 1.0:
         raise SystemExit(f"El montaje híbrido alteró la duración ({drift:.2f}s).")
     storyboard = {
-        "version":"caspitas-hybrid-mvp-2",
+        "version":"caspitas-hybrid-mvp-3",
+        "planner":planner,
         "source_video":source.name,
         "duration_seconds":round(duration,3),
         "final_duration_seconds":round(final_duration,3),
@@ -321,7 +370,8 @@ def main():
         "subtitle_timing_preserved":True,
         "scene_count":len(scenes),
         "inserted_visual_seconds":round(sum(s["duration"] for s in scenes),3),
-        "visual_mix_note":"El vídeo documental original permanece como base. Se superponen tarjetas animadas 2D en ventanas temporales sin desplazar el vídeo ni el audio; la franja inferior queda libre para conservar los subtítulos originales. Mapas esquemáticos, documentos y reconstrucciones se identifican como recreaciones, nunca como pruebas originales.",
+        "visual_mix_note":"El documental original permanece como base. El storyboard semántico selecciona escenas por contexto; mapas y archivos solo se insertan si el paso de investigación encuentra una fuente y licencia registradas. Las escenas sin recurso verificado se marcan como recreación o recurso no encontrado.",
+        "parallax_note":"El efecto 2.5D de esta versión es parallax por capas (fondo difuminado y capa frontal con desplazamiento independiente); no es estimación de profundidad neuronal.",
         "scenes":scenes
     }
     args.storyboard.write_text(json.dumps(storyboard,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
