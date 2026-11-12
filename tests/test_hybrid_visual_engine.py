@@ -12,7 +12,7 @@ class HybridVisualEngineTests(unittest.TestCase):
     def test_reads_numeric_subtitle_text(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "sample.srt"
-            path.write_text("\\n".join([
+            path.write_text("\n".join([
                 "1",
                 "00:00:01,000 --> 00:00:02,000",
                 "1981",
