@@ -41,7 +41,7 @@ def main():
         start=float(scene.get("start",0)); duration=float(scene.get("duration",0))
         if start<0 or duration<3.5 or duration>7:
             errors.append(f"Escena {i}: tiempo o duración fuera de límites.")
-        location=norm(scene.get("location_query",""))
+        location=norm(str(scene.get("location_query","")).split(",")[0])
         if location and location not in transcript:
             errors.append(f"Escena {i}: ubicación no está literalmente respaldada por el relato.")
         if scene.get("type")=="map":
