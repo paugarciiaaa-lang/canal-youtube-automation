@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - caspitas-2.0-hybrid-test
-  workflow_dispatch:
 
 permissions:
   contents: read
