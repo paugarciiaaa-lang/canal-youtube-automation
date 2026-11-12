@@ -97,13 +97,13 @@ def base_frame(index: int, total: int):
     im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
     d.rounded_rectangle((58, 58, W-58, 900), radius=34,
-                        fill=(11, 18, 29, 242), outline=(82, 103, 126, 245), width=4)
+                        fill=(11, 18, 29, 185), outline=(82, 103, 126, 245), width=4)
     d.rectangle((58, 58, 78, 900), fill=AMBER)
     d.text((112, 90), "CASPITAS  /  DOCUMENTAL", font=font(24, True), fill=MUTED)
     d.line((112, 138, W-112, 138), fill=(72, 91, 112), width=2)
     # Animated accent sweep inside the card.
     x = int(140 + (W-280) * ((index / max(1,total-1)) * .65 + .15))
-    d.ellipse((x-180, 170, x+180, 530), fill=(18, 34, 48, 255))
+    d.ellipse((x-180, 170, x+180, 530), fill=(18, 34, 48, 205))
     return im
 
 def draw_stickman(d, t: float, x=1450, y=440, scale=1.0, pose="investigate"):
