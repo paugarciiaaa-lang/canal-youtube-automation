@@ -1,0 +1,92 @@
+name: Test del motor visual híbrido
+
+on:
+  push:
+    branches:
+      - caspitas-2.0-hybrid-test
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-hybrid-engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar FFmpeg y Pillow
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip pillow
+
+      - name: Compilar y ejecutar pruebas unitarias
+        run: |
+          python3 -m py_compile scripts/hybrid_visual_engine.py
+          python3 -m unittest discover -s tests -v
+
+      - name: Crear documental sintético de tres minutos
+        run: |
+          mkdir -p smoke
+          ffmpeg -y -loglevel error \
+            -f lavfi -i "color=c=0x15202b:s=1920x1080:r=24" \
+            -f lavfi -i "anullsrc=channel_layout=stereo:sample_rate=48000" \
+            -t 180 -shortest -c:v libx264 -preset ultrafast -crf 30 \
+            -pix_fmt yuv420p -c:a aac smoke/base.mp4
+          cat > smoke/test.srt <<'SRT'
+          1
+          00:00:00,000 --> 00:00:50,000
+          En 1981 el investigador llegó a la estación.
+
+          2
+          00:00:50,000 --> 00:01:40,000
+          El expediente contenía una carta y una prueba.
+
+          3
+          00:01:40,000 --> 00:03:00,000
+          La expedición avanzó por la montaña.
+          SRT
+
+      - name: Probar renderizado y sincronización de overlays
+        run: |
+          python3 scripts/hybrid_visual_engine.py \
+            --video smoke/base.mp4 \
+            --srt smoke/test.srt \
+            --output smoke/hybrid-preview.mp4 \
+            --storyboard smoke/storyboard.json \
+            --interval 55 \
+            --scene-seconds 4.5
+          python3 - <<'PY'
+          import json, subprocess
+          from pathlib import Path
+          data = json.loads(Path("smoke/storyboard.json").read_text(encoding="utf-8"))
+          assert data["scene_count"] >= 3, data
+          assert data["audio_preserved"] is True
+          assert data["subtitle_timing_preserved"] is True
+          def duration(p):
+              return float(subprocess.check_output([
+                  "ffprobe","-v","error","-show_entries","format=duration",
+                  "-of","default=noprint_wrappers=1:nokey=1",p
+              ], text=True))
+          drift = abs(duration("smoke/base.mp4") - duration("smoke/hybrid-preview.mp4"))
+          assert drift < 1.0, drift
+          print(f"Smoke test correcto: {data['scene_count']} overlays; diferencia {drift:.3f}s")
+          PY
+
+      - name: Guardar muestra técnica
+        uses: actions/upload-artifact@v4
+        with:
+          name: caspitas-hybrid-smoke-test
+          path: |
+            smoke/hybrid-preview.mp4
+            smoke/storyboard.json
+          if-no-files-found: error
+          retention-days: 7
