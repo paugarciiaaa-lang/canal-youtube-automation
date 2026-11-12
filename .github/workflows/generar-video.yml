@@ -400,7 +400,7 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install --quiet pillow
-          video="$(find output -maxdepth 1 -type f -name '*.mp4' -printf '%T@ %p\\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+          video="$(find output -maxdepth 1 -type f -name '*.mp4' -printf '%T@ %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
           test -n "$video"
           python3 scripts/hybrid_storyboard.py --video "$video" --srt output/subtitles.srt --output-dir output/hybrid --preview-seconds 60
           cp output/hybrid/hybrid-preview.mp4 output/Caspitas-hybrid-preview.mp4
