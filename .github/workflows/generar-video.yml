@@ -456,8 +456,7 @@ jobs:
               git reset --hard "origin/${GITHUB_REF_NAME}"
             done
             if [ "$pushed" != "true" ]; then
-              echo "::error::No se pudo actualizar el historial tras 5 intentos. El vídeo generado se conservará como artefacto."
-              exit 1
+              echo "::warning::No se pudo actualizar el historial tras 5 intentos. La generación continuará y el vídeo se conservará como artefacto; el tema podría volver a aparecer en una ejecución futura."
             fi
           fi
 
