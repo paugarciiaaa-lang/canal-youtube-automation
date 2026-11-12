@@ -107,36 +107,62 @@ def base_frame(index: int, total: int):
     return im
 
 def draw_stickman(d, t: float, x=1450, y=440, scale=1.0, pose="investigate"):
-    bob = math.sin(t * math.tau) * 8
-    x, y = int(x), int(y+bob)
-    # Character shadow and legs.
-    d.ellipse((x-130, y+430, x+150, y+480), fill=(7, 12, 19))
-    stride = math.sin(t * math.tau) * 38
-    d.line((x-28, y+285, x-75+stride, y+425), fill=(30, 39, 53), width=34)
-    d.line((x+28, y+285, x+78-stride, y+425), fill=(30, 39, 53), width=34)
-    d.line((x-75+stride, y+425, x-118+stride, y+438), fill=INK, width=20)
-    d.line((x+78-stride, y+425, x+125-stride, y+438), fill=INK, width=20)
-    # Coat torso, shirt and tie.
-    d.rounded_rectangle((x-92, y+112, x+92, y+310), radius=42, fill=(47, 68, 91), outline=INK, width=7)
-    d.polygon([(x-35,y+120),(x,y+168),(x+35,y+120),(x+20,y+285),(x-20,y+285)], fill=(220,226,231))
-    d.polygon([(x-12,y+158),(x+12,y+158),(x+18,y+250),(x,y+275),(x-18,y+250)], fill=AMBER)
-    # Head and hair.
-    d.ellipse((x-82,y-55,x+82,y+110), fill=(211,164,127), outline=INK, width=8)
-    d.pieslice((x-88,y-72,x+88,y+82), 180, 355, fill=(35,33,34), outline=INK, width=5)
-    d.ellipse((x-35,y+18,x-19,y+34), fill=(25,29,34))
-    d.ellipse((x+19,y+18,x+35,y+34), fill=(25,29,34))
-    d.arc((x-24,y+35,x+24,y+72), 15, 160, fill=(92,45,42), width=5)
-    # Animated arms; investigator points to the clue.
-    if pose == "walk":
-        arm1, arm2 = (x-135,y+185+int(stride*.4)), (x+135,y+185-int(stride*.4))
-        hand1, hand2 = (x-178,y+270+int(stride*.4)), (x+178,y+260-int(stride*.4))
+    """Draw Caspitas' recurring 2D comic explorer (not a line stickman)."""
+    s = scale
+    def pt(px, py):
+        return (int(x + px*s), int(y + py*s))
+    ink=(12,17,24); skin=(225,190,157); coat=(42,57,72)
+    coat_light=(75,91,105); pants=(46,61,78); pack=(91,76,54)
+    bob=math.sin(t*math.tau)*7*s
+    y0=y+bob
+    x=int(x)
+    # Ground shadow.
+    d.ellipse((x-155*s,y0+430*s,x+155*s,y0+475*s),fill=(5,10,17))
+    stride=math.sin(t*math.tau)*34*s
+    # Boots and bent running legs.
+    d.line((pt(-35,285),pt(-78+stride,405),pt(-120+stride,430)),fill=ink,width=max(5,int(35*s)),joint="curve")
+    d.line((pt(35,285),pt(82-stride,390),pt(132-stride,412)),fill=ink,width=max(5,int(35*s)),joint="curve")
+    d.line((pt(-120+stride,430),pt(-158+stride,430)),fill=(28,35,43),width=max(5,int(22*s)))
+    d.line((pt(132-stride,412),pt(170-stride,416)),fill=(28,35,43),width=max(5,int(22*s)))
+    # Backpack behind the shoulder, with visible straps and flap.
+    d.rounded_rectangle((x+45*s,y0+88*s,x+170*s,y0+270*s),radius=int(28*s),fill=pack,outline=ink,width=max(4,int(8*s)))
+    d.rounded_rectangle((x+58*s,y0+105*s,x+155*s,y0+160*s),radius=int(16*s),fill=(119,99,68),outline=ink,width=max(3,int(5*s)))
+    d.line((pt(58,120),pt(15,180),pt(55,270)),fill=(20,28,37),width=max(4,int(15*s)))
+    # Jacket torso with collar, pockets and zipper.
+    d.polygon([pt(-78,112),pt(-48,82),pt(48,82),pt(86,125),pt(75,300),pt(-78,300),pt(-92,145)],fill=coat,outline=ink)
+    d.line((pt(-78,112),pt(-48,82),pt(0,125),pt(48,82),pt(86,125)),fill=(126,137,142),width=max(3,int(7*s)))
+    d.line((pt(0,126),pt(0,286)),fill=(15,23,31),width=max(2,int(5*s)))
+    for px in (-52,32):
+        d.rounded_rectangle((x+(px-22)*s,y0+188*s,x+(px+22)*s,y0+244*s),radius=int(8*s),fill=coat_light,outline=ink,width=max(2,int(4*s)))
+    d.ellipse((x-8*s,y0+150*s,x+8*s,y0+166*s),fill=(225,181,80),outline=ink,width=max(1,int(2*s)))
+    # Head, ears and expressive face.
+    d.ellipse((x-78*s,y0-68*s,x+78*s,y0+105*s),fill=skin,outline=ink,width=max(4,int(8*s)))
+    d.ellipse((x-91*s,y0+8*s,x-65*s,y0+48*s),fill=skin,outline=ink,width=max(2,int(5*s)))
+    d.ellipse((x+65*s,y0+8*s,x+91*s,y0+48*s),fill=skin,outline=ink,width=max(2,int(5*s)))
+    d.pieslice((x-88*s,y0-94*s,x+88*s,y0+55*s),180,360,fill=(36,39,41),outline=ink,width=max(3,int(6*s)))
+    d.ellipse((x-98*s,y0+22*s,x+98*s,y0+44*s),fill=(45,48,48),outline=ink,width=max(3,int(6*s)))
+    d.rounded_rectangle((x-49*s,y0-116*s,x+50*s,y0-79*s),radius=int(12*s),fill=(39,43,45),outline=ink,width=max(3,int(5*s)))
+    # Eyes, eyebrows and mouth convey alert determination.
+    d.ellipse((x-39*s,y0+12*s,x-17*s,y0+39*s),fill=(247,241,224),outline=ink,width=max(2,int(3*s)))
+    d.ellipse((x+17*s,y0+12*s,x+39*s,y0+39*s),fill=(247,241,224),outline=ink,width=max(2,int(3*s)))
+    d.ellipse((x-29*s,y0+19*s,x-18*s,y0+34*s),fill=ink)
+    d.ellipse((x+18*s,y0+19*s,x+29*s,y0+34*s),fill=ink)
+    d.line((pt(-43,7),pt(-15,1)),fill=ink,width=max(2,int(6*s)))
+    d.line((pt(15,1),pt(43,7)),fill=ink,width=max(2,int(6*s)))
+    d.arc((x-22*s,y0+42*s,x+22*s,y0+78*s),5,165,fill=(94,48,43),width=max(2,int(5*s)))
+    # Arms: a running swing or an investigator pointing at a clue.
+    if pose=="walk":
+        a1=pt(-112,160+stride*.25); h1=pt(-154,238+stride*.25)
+        a2=pt(112,155-stride*.25); h2=pt(158,225-stride*.25)
     else:
-        arm1, arm2 = (x-135,y+190), (x+135,y+165)
-        hand1, hand2 = (x-175,y+300), (x+220,y+75+int(18*math.sin(t*math.tau)))
-    d.line((x-75,y+145,arm1[0],arm1[1],hand1[0],hand1[1]), fill=(211,164,127), width=27, joint="curve")
-    d.line((x+75,y+145,arm2[0],arm2[1],hand2[0],hand2[1]), fill=(211,164,127), width=27, joint="curve")
-    d.ellipse((hand1[0]-18,hand1[1]-18,hand1[0]+18,hand1[1]+18), fill=(211,164,127))
-    d.ellipse((hand2[0]-18,hand2[1]-18,hand2[0]+18,hand2[1]+18), fill=(211,164,127))
+        a1=pt(-120,155); h1=pt(-160,248)
+        a2=pt(118,145); h2=pt(205,65+18*math.sin(t*math.tau))
+    d.line((pt(-65,125),a1,h1),fill=ink,width=max(5,int(34*s)),joint="curve")
+    d.line((pt(-65,125),a1,h1),fill=coat,width=max(4,int(25*s)),joint="curve")
+    d.line((pt(65,125),a2,h2),fill=ink,width=max(5,int(34*s)),joint="curve")
+    d.line((pt(65,125),a2,h2),fill=coat,width=max(4,int(25*s)),joint="curve")
+    for hx,hy in (h1,h2):
+        d.ellipse((hx[0]-16*s,hy[1]-16*s,hx[0]+16*s,hy[1]+16*s),fill=skin,outline=ink,width=max(2,int(4*s)))
 
 def paste_layered_asset(im, scene, t, box):
     from PIL import Image, ImageOps, ImageFilter, ImageDraw
