@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Semantic storyboard planner for Caspitas 2.0 using the configured OpenRouter key."""
-import argparse, json, os, re, urllib.request
+import argparse, json, os, re, time, urllib.request
 from pathlib import Path
 
 def read_srt(path):
@@ -19,6 +19,8 @@ def read_srt(path):
     return cues
 
 def extract_json(value):
+    if not isinstance(value,str) or not value.strip():
+        raise ValueError("El proveedor devolvió message.content vacío o nulo.")
     value=value.strip()
     ticks=chr(96)*3
     if value.startswith(ticks):
@@ -120,8 +122,39 @@ def main():
     req=urllib.request.Request("https://openrouter.ai/api/v1/chat/completions",data=body,
       headers={"Authorization":"Bearer "+a.api_key,"Content-Type":"application/json",
       "HTTP-Referer":"https://github.com/paugarciiaaa-lang/canal-youtube-automation","X-Title":"Caspitas semantic storyboard"})
-    with urllib.request.urlopen(req,timeout=150) as r: response=json.loads(r.read())
-    parsed=extract_json(response["choices"][0]["message"]["content"])
+    parsed=None
+    last_error=None
+    # Algunos modelos/proveedores responden HTTP 200 pero dejan message.content en null.
+    # Reintentar brevemente y, si persiste, continuar con el fallback literal de subtítulos.
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req,timeout=150) as r:
+                response=json.loads(r.read().decode("utf-8"))
+            choices=response.get("choices") or []
+            message=(choices[0].get("message") or {}) if choices else {}
+            content=message.get("content")
+            if not isinstance(content,str) or not content.strip():
+                finish_reason=choices[0].get("finish_reason","unknown") if choices else "no_choices"
+                raise ValueError(
+                    f"Respuesta sin contenido textual (finish_reason={finish_reason})."
+                )
+            parsed=extract_json(content)
+            if not isinstance(parsed,dict) or not isinstance(parsed.get("scenes"),list):
+                raise ValueError("La respuesta JSON no contiene una lista 'scenes'.")
+            break
+        except (ValueError, KeyError, IndexError, json.JSONDecodeError) as exc:
+            last_error=str(exc)
+            if attempt < 2:
+                wait_seconds=2 ** attempt
+                print(f"Respuesta semántica no utilizable (intento {attempt+1}/3): {last_error}. Reintentando en {wait_seconds}s.")
+                time.sleep(wait_seconds)
+    if parsed is None:
+        print(
+            "AVISO: el modelo no devolvió un storyboard válido tras 3 intentos. "
+            "Se usará el fallback construido exclusivamente con subtítulos literales. "
+            f"Último error: {last_error}"
+        )
+        parsed={"scenes":[],"fallback_reason":last_error}
     allowed={"photo","map","document","reconstruction","stickman","timeline","motion_graphic","parallax"}
     transcript_norm=re.sub(r"\s+"," "," ".join(c["text"] for c in cues)).casefold()
     transcript_evidence=normalize_evidence(transcript_norm)
