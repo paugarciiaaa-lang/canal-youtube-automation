@@ -1,0 +1,541 @@
+name: Caspitas 2.0 - prueba híbrida
+
+on:
+  workflow_dispatch:
+    inputs:
+      video_subject:
+        description: 'Tema del vídeo (déjalo vacío para elegir uno sin repetir hasta agotar la lista)'
+        required: false
+        type: string
+        default: ''
+concurrency:
+  group: caspitas-hybrid-test
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Comprobar que son las 21:00 en España
+        id: local_time
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != "schedule" ] || [ "$(TZ=Europe/Madrid date +%H)" = "21" ]; then
+            echo "run_now=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_now=false" >> "$GITHUB_OUTPUT"
+            echo "Esta ejecución programada no corresponde a las 21:00 en España; se omite."
+          fi
+
+      - name: Descargar el repositorio
+        if: steps.local_time.outputs.run_now == 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fijar versión estable de MoneyPrinterTurbo
+        if: steps.local_time.outputs.run_now == 'true'
+        run: git clone --depth 1 --branch v1.3.10 https://github.com/harry0703/MoneyPrinterTurbo.git mpt
+
+      - name: Aplicar controles de duración y optimización FFmpeg
+        if: steps.local_time.outputs.run_now == 'true'
+        run: |
+          python3 scripts/patch_moneyprinter.py
+          python3 -m py_compile mpt/app/services/task.py mpt/app/services/video.py
+
+      - name: Instalar Python con caché de dependencias
+        if: steps.local_time.outputs.run_now == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: mpt/requirements.txt
+
+      - name: Instalar FFmpeg
+        if: steps.local_time.outputs.run_now == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          ffmpeg -version | head -n 1
+          ffprobe -version | head -n 1
+
+      - name: Instalar dependencias de MoneyPrinterTurbo
+        if: steps.local_time.outputs.run_now == 'true'
+        working-directory: mpt
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Instalar Pillow para crear miniaturas
+        if: steps.local_time.outputs.run_now == 'true'
+        run: python -m pip install pillow
+
+      - name: Elegir tema sin repetir innecesariamente
+        if: steps.local_time.outputs.run_now == 'true'
+        env:
+          USER_TOPIC: ${{ github.event.inputs.video_subject }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import random
+          from pathlib import Path
+
+          user_topic = (os.environ.get("USER_TOPIC") or "").strip()
+          selected_id = ""
+
+          if user_topic:
+              subject = user_topic
+              print("Se utilizará el tema introducido manualmente.")
+          else:
+              topics = json.loads(Path("data/topics.json").read_text(encoding="utf-8"))
+              if not topics:
+                  raise SystemExit("data/topics.json no contiene temas.")
+
+              history_path = Path("data/topic_history.json")
+              history = json.loads(history_path.read_text(encoding="utf-8")) if history_path.exists() else {"used_ids": []}
+              used_ids = set(history.get("used_ids", []))
+              available = [item for item in topics if item["id"] not in used_ids]
+
+              if not available:
+                  print("Se han utilizado todos los temas; comienza un nuevo ciclo.")
+                  available = topics
+
+              selected = random.choice(available)
+              selected_id = selected["id"]
+              subject = selected["video_subject"]
+              print(f"Tema seleccionado: {subject}")
+
+          prompt = """
+          GUION DOCUMENTAL DE 2.300-2.500 PALABRAS en español de España, para narración de 14-17 minutos. Nunca menos de 2.200 palabras. Desarrolla, no resumas ni rellenes.
+          ESTRUCTURA: gancho inicial; contexto y protagonistas; cronología detallada; pruebas, documentos y testimonios; hipótesis contrastadas; contradicciones y explicaciones alternativas; hechos confirmados frente a debates y lagunas; consecuencias y estado actual; conclusión razonada y pregunta final.
+          RIGOR: no inventes hechos, fechas, nombres, citas, diálogos, documentos, fuentes ni enlaces. Prioriza fuentes primarias, archivos oficiales, estudios académicos e informes identificables. Atribuye las hipótesis y distingue claramente hechos, teorías, rumores y dudas. Si no puedes verificar una referencia, márcala como pendiente; no la presentes como verificada.
+          VALOR: análisis propio, contexto específico y educativo; episodio original, no plantilla repetida. Sugiere recursos visuales pertinentes, mapas y cronologías, sin repetir clips de stock.
+          ESTILO: tono serio, inmersivo y natural. Sin notas de cámara, instrucciones al editor ni saludos. Trata tragedias con respeto, sin morbo ni imágenes gráficas. No presentes conspiraciones como hechos.
+          DERECHOS: no presupongas licencia comercial de voz, música o imágenes; evita música sin licencia documentada.
+          """
+
+          Path("topic_subject.txt").write_text(subject, encoding="utf-8")
+          Path("topic_prompt.txt").write_text(prompt, encoding="utf-8")
+          Path("selected_topic_id.txt").write_text(selected_id, encoding="utf-8")
+          PY
+
+      - name: Verificar secretos necesarios
+        if: steps.local_time.outputs.run_now == 'true'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          if [ -z "$GEMINI_API_KEY" ] && [ -z "$OPENROUTER_API_KEY" ]; then
+            echo "::error::Configura al menos un proveedor de IA: GEMINI_API_KEY u OPENROUTER_API_KEY."
+            exit 1
+          fi
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "Gemini no está configurado; se utilizará OpenRouter."
+          else
+            echo "Gemini está configurado; OpenRouter podrá actuar como respaldo."
+          fi
+          if [ -z "$PIXABAY_API_KEY" ]; then
+            echo "::error::Falta el secreto PIXABAY_API_KEY en GitHub Actions."
+            exit 1
+          fi
+          if [ -n "$OPENROUTER_API_KEY" ]; then
+            echo "OpenRouter está configurado como proveedor alternativo."
+          else
+            echo "Aviso: OPENROUTER_API_KEY no está configurado; solo se probará Gemini."
+          fi
+          echo "Los secretos necesarios están configurados (valores ocultos)."
+
+      - name: Crear configuración privada
+        if: steps.local_time.outputs.run_now == 'true'
+        working-directory: mpt
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          umask 077
+          cat > config.toml <<EOF
+          [app]
+          video_source = "pixabay"
+          pixabay_api_keys = ["${PIXABAY_API_KEY}"]
+          llm_provider = "gemini"
+          gemini_api_key = "${GEMINI_API_KEY}"
+          gemini_model_name = "gemini-3.8-flash"
+          openrouter_api_key = "${OPENROUTER_API_KEY}"
+          openrouter_base_url = "https://openrouter.ai/api/v1"
+          openrouter_model_name = "nvidia/nemotron-3-ultra-550b-a55b:free"
+          subtitle_provider = "edge"
+          edge_tts_timeout = 600
+          ffmpeg_concat_timeout_seconds = 7200
+          material_concurrency = 2
+          video_clip_concurrency = 2
+          EOF
+          chmod 600 config.toml
+
+      - name: Generar documental con Gemini y respaldo OpenRouter
+        if: steps.local_time.outputs.run_now == 'true'
+        working-directory: mpt
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          set -euo pipefail
+          success=false
+          selected_provider=""
+          selected_model=""
+          : > ../generation.log
+
+          run_generation() {
+            local provider="$1"
+            local model="$2"
+            local config_key="$3"
+
+            echo "Intentando generar con proveedor: $provider | modelo: $model"
+            python3 - "$provider" "$model" "$config_key" <<'PY'
+          import json
+          import re
+          import sys
+          from pathlib import Path
+
+          provider, model, config_key = sys.argv[1:4]
+          path = Path("config.toml")
+          config = path.read_text(encoding="utf-8")
+          replacements = {"llm_provider": provider, config_key: model}
+          for key, value in replacements.items():
+              pattern = rf"(?m)^{re.escape(key)}\s*=.*$"
+              config, count = re.subn(pattern, f"{key} = {json.dumps(value)}", config, count=1)
+              if count != 1:
+                  raise SystemExit(f"No se encontró exactamente una línea para {key}")
+          path.write_text(config, encoding="utf-8")
+          PY
+
+            # Cada proveedor parte de un directorio limpio para no confundir un MP4
+            # incompleto de un intento anterior con el resultado del intento actual.
+            mkdir -p storage/tasks
+            find storage/tasks -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+
+            set +e
+            timeout --signal=TERM --kill-after=60s 150m python3 cli.py \
+              --video-subject "$(cat ../topic_subject.txt)" \
+              --video-script-prompt "$(cat ../topic_prompt.txt)" \
+              --video-source pixabay \
+              --video-language es-ES \
+              --voice-name "es-ES-AlvaroNeural" \
+              --voice-rate 0.95 \
+              --paragraph-number 10 \
+              --video-aspect "16:9" \
+              --video-fit-mode "cover" \
+              --video-clip-duration 6 \
+              --video-transition-mode "fade-in" \
+              --bgm-type none \
+              --bgm-volume 0 \
+              --subtitle-enabled \
+              --subtitle-display-mode word_by_word \
+              --subtitle-animation none \
+              --font-size 54 \
+              --text-fore-color "#FFE36E" \
+              --stroke-color "#171717" \
+              --stroke-width 3 \
+              --subtitle-position bottom \
+              --subtitle-background-enabled \
+              --subtitle-background-color "#171717" \
+              --rounded-subtitle-background \
+              --n-threads 2 \
+              --match-materials-to-script \
+              --stop-at video 2>&1 | tee -a ../generation.log
+            local status=${PIPESTATUS[0]}
+            set -e
+
+            # No basta con que MoneyPrinterTurbo devuelva código 0: también
+            # exigimos un MP4 nuevo y con duración mínima antes de aceptar el modelo.
+            if [ "$status" -eq 0 ]; then
+              video="$(find storage/tasks -type f -name '*.mp4' -size +1M -printf '%T@ %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+              if [ -z "$video" ] || [ ! -f "$video" ]; then
+                echo "El proveedor terminó sin crear un MP4 válido."
+                status=3
+              else
+                duration="$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$video" 2>/dev/null || echo 0)"
+                if python3 - "$duration" <<'PY'
+          import sys
+          seconds = float(sys.argv[1])
+          print(f"Duración del intento: {seconds / 60:.1f} minutos")
+          if seconds < 600:
+              raise SystemExit("Duración inferior a 10 minutos; se probará el siguiente proveedor/modelo.")
+          PY
+                then
+                  echo "Generación válida completada con $provider ($model)."
+                  selected_provider="$provider"
+                  selected_model="$model"
+                  success=true
+                  return 0
+                else
+                  status=4
+                fi
+              fi
+            fi
+
+            echo "El intento con $provider ($model) ha fallado (código $status)."
+            if [ "$status" -eq 124 ]; then
+              echo "::error::Timeout del proceso completo. No se repetirá la generación con otro modelo porque el fallo se ha producido durante el procesamiento/renderizado, no necesariamente al generar el guion."
+            fi
+            return "$status"
+          }
+
+          # Se prueban dos modelos Gemini; si fallan o generan un vídeo demasiado corto,
+          # se pasa a OpenRouter, que es independiente de la infraestructura Google.
+          status=1
+          if [ -n "$GEMINI_API_KEY" ]; then
+            for model in gemini-3.5-flash-lite gemini-3.8-flash; do
+              if run_generation "gemini" "$model" "gemini_model_name"; then
+                break
+              else
+                status=$?
+                if [ "$status" -eq 124 ]; then
+                  echo "Se detiene el fallback: el intento agotó su tiempo durante el procesamiento."
+                  break
+                fi
+              fi
+              if [ "$model" != "gemini-3.8-flash" ]; then
+                echo "Esperando 45 segundos antes del siguiente intento Gemini..."
+                sleep 45
+              fi
+            done
+          else
+            echo "No hay clave Gemini; se omitirá Gemini y se probará OpenRouter directamente."
+          fi
+
+          if [ "$success" != "true" ] && [ "${status:-0}" -ne 124 ] && [ -n "$OPENROUTER_API_KEY" ]; then
+            echo "Gemini no ha podido completar la generación. Activando OpenRouter..."
+            run_generation "openrouter" "nvidia/nemotron-3-ultra-550b-a55b:free" "openrouter_model_name" || true
+          fi
+
+          if [ "$success" != "true" ]; then
+            echo "::error::No se pudo generar el documental con Gemini ni con OpenRouter. Revisa generation.log."
+            exit 1
+          fi
+
+          printf '%s\n' "$selected_provider" > ../selected_provider.txt
+          printf '%s\n' "$selected_model" > ../selected_model.txt
+
+      - name: Revisar MP4, duración, pistas y sincronización de subtítulos
+        if: steps.local_time.outputs.run_now == 'true'
+        working-directory: mpt
+        run: |
+          set -euo pipefail
+          video="$(find storage/tasks -type f -name '*.mp4' -size +1M -printf '%T@ %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+          if [ -z "$video" ] || [ ! -f "$video" ]; then
+            echo "::error::No hay un MP4 que pueda pasar el control de calidad."
+            exit 1
+          fi
+          mkdir -p ../output
+          python3 ../scripts/validate_video.py "$video" --report ../output/qa_report.json
+          task_dir="$(dirname "$video")"
+          cp "$task_dir/subtitle.srt" ../output/subtitles.srt
+          cp "$task_dir/audio.mp3" ../output/audio.mp3
+          cp ../generation.log ../output/generation.log
+
+      - name: Validar duración y preparar el vídeo final
+        id: prepared_video
+        if: steps.local_time.outputs.run_now == 'true'
+        working-directory: mpt
+        run: |
+          set -euo pipefail
+          video="$(find storage/tasks -type f -name '*.mp4' -size +1M -printf '%T@ %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+          if [ -z "$video" ] || [ ! -f "$video" ]; then
+            echo "::error::MoneyPrinterTurbo terminó sin producir un MP4 válido."
+            exit 1
+          fi
+
+          duration="$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$video")"
+          python3 - "$duration" <<'PY'
+          import sys
+          seconds = float(sys.argv[1])
+          print(f"Duración detectada: {seconds / 60:.1f} minutos")
+          if seconds < 600:
+              raise SystemExit("El vídeo dura menos de 10 minutos; no se considera listo para publicar.")
+          if not 600 <= seconds <= 1020:
+              print("AVISO: la duración queda fuera del objetivo de 14-17 minutos.")
+          PY
+
+          mkdir -p ../output
+          final="../output/Caspitas-$(TZ=Europe/Madrid date +%Y-%m-%d)-$GITHUB_RUN_NUMBER.mp4"
+          cp "$video" "$final"
+          printf '%s\n' "$duration" > ../output/duration_seconds.txt
+          printf '%s\n' "$(cat ../topic_subject.txt)" > ../output/tema.txt
+          printf '%s | %s\n' "$(cat ../selected_provider.txt)" "$(cat ../selected_model.txt)" > ../output/modelo.txt
+          echo "video_path=output/$(basename "$final")" >> "$GITHUB_OUTPUT"
+          echo "topic=$(cat ../topic_subject.txt)" >> "$GITHUB_OUTPUT"
+          script_file="$(find storage/tasks -type f -iname '*script*.txt' -size +2k -printf '%s %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+          if [ -z "$script_file" ]; then
+            script_file="$(find storage/tasks -type f -iname '*.srt' -size +2k -printf '%s %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+          fi
+          if [ -n "$script_file" ] && [ -f "$script_file" ]; then
+            cp "$script_file" ../output/script_source.txt
+            echo "Se ha localizado el guion/subtítulo para crear metadatos basados en el contenido."
+          else
+            printf '%s\n' "$(cat ../topic_subject.txt)" > ../output/script_source.txt
+            echo "::warning::No se ha localizado el texto del guion; los metadatos usarán el tema como respaldo."
+          fi
+          echo "Vídeo validado y preparado: $final"
+
+      - name: Analizar guion, crear storyboard y montar capa visual híbrida
+        id: hybrid_visuals
+        if: steps.local_time.outputs.run_now == 'true' && success()
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/hybrid_visual_engine.py
+          python3 scripts/hybrid_visual_engine.py \
+            --video "${{ steps.prepared_video.outputs.video_path }}" \
+            --srt output/subtitles.srt \
+            --output output/Caspitas-hybrid.mp4 \
+            --storyboard output/storyboard.json \
+            --interval 55 \
+            --scene-seconds 4.5
+          mkdir -p output/hybrid_qa
+          cp output/Caspitas-hybrid.mp4 output/hybrid_qa/video.mp4
+          cp output/audio.mp3 output/hybrid_qa/audio.mp3
+          cp output/subtitles.srt output/hybrid_qa/subtitle.srt
+          python3 scripts/validate_video.py output/hybrid_qa/video.mp4 --report output/hybrid_qa_report.json
+          echo "video_path=output/Caspitas-hybrid.mp4" >> "$GITHUB_OUTPUT"
+          echo "Storyboard híbrido creado y validación técnica completada."
+
+      - name: Guardar tema en el historial para evitar repeticiones
+        if: steps.local_time.outputs.run_now == 'true' && success()
+        run: |
+          topic_id="$(cat selected_topic_id.txt)"
+          if [ -n "$topic_id" ]; then
+            python3 - "$topic_id" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          path = Path("data/topic_history.json")
+          data = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"used_ids": []}
+          topics = json.loads(Path("data/topics.json").read_text(encoding="utf-8"))
+          all_ids = {item["id"] for item in topics}
+          used = data.get("used_ids", [])
+          if all_ids and all_ids.issubset(set(used)):
+              used = []
+          if sys.argv[1] not in used:
+              used.append(sys.argv[1])
+          data["used_ids"] = used
+          path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          PY
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add data/topic_history.json
+            if ! git diff --cached --quiet; then
+              git commit -m "Actualizar historial de temas de Caspitas"
+              git push origin "HEAD:${GITHUB_REF_NAME}"
+            fi
+          fi
+
+      - name: Crear título, descripción y miniatura whiteboard
+        id: youtube_assets
+        if: steps.local_time.outputs.run_now == 'true' && success()
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          set -euo pipefail
+          python3 scripts/create_youtube_assets.py
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+          data = json.loads(Path("output/metadata.json").read_text(encoding="utf-8"))
+          print("title=" + data["title"].replace("\\n", " ").strip())
+          print("title_json=" + json.dumps(data["title"], ensure_ascii=False))
+          print("description_json=" + json.dumps(data["description"], ensure_ascii=False))
+          print("tags_json=" + json.dumps(data["tags"], ensure_ascii=False))
+          print("thumbnail_path=output/thumbnail.png")
+          PY
+
+      - name: Comprobación final de derechos antes de publicar
+        id: monetization_gate
+        if: steps.local_time.outputs.run_now == 'true' && success()
+        env:
+          VOICE_LICENSE_CONFIRMED: ${{ secrets.VOICE_COMMERCIAL_LICENSE_CONFIRMED }}
+          SOURCES_VERIFIED: ${{ secrets.RESEARCH_SOURCES_VERIFIED }}
+          VISUAL_LICENSES_VERIFIED: ${{ secrets.VISUAL_LICENSES_VERIFIED }}
+        run: |
+          allowed=true
+          if [ "$VOICE_LICENSE_CONFIRMED" != "yes" ]; then
+            echo "::warning::Publicación bloqueada: falta confirmar por escrito la licencia comercial de la voz."
+            allowed=false
+          fi
+          if [ "$SOURCES_VERIFIED" != "yes" ]; then
+            echo "::warning::Publicación bloqueada: falta verificar las fuentes documentales del episodio."
+            allowed=false
+          fi
+          if [ "$VISUAL_LICENSES_VERIFIED" != "yes" ]; then
+            echo "::warning::Publicación bloqueada: falta revisar licencias y derechos de terceros de los recursos visuales."
+            allowed=false
+          fi
+          echo "publish_allowed=$allowed" >> "$GITHUB_OUTPUT"
+          if [ "$allowed" = "true" ]; then
+            echo "Controles documentales y de derechos confirmados."
+          else
+            echo "El vídeo se conservará como artefacto privado de revisión; no se programará en YouTube."
+          fi
+
+      - name: Resumen de la generación
+        if: steps.local_time.outputs.run_now == 'true' && success()
+        run: |
+          echo "## Caspitas: documental generado" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Tema: $(cat output/tema.txt)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Proveedor/modelo de guion: $(cat output/modelo.txt)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Duración: $(python3 -c 'print(round(float(open("output/duration_seconds.txt").read())/60, 1))') minutos" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Control técnico: $(python3 -c 'import json; print(json.load(open("output/qa_report.json"))["status"])')" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Sincronización A/V: $(python3 -c 'import json; print(json.load(open("output/qa_report.json"))["audio_video_drift_seconds"])') segundos de diferencia" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Subtítulos: $(python3 -c 'import json; print(json.load(open("output/qa_report.json"))["subtitle_cues"])') cues revisados; comprobar también la escucha final" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Motor visual híbrido: storyboard automático y escenas 2D esquemáticas intercaladas con el material documental original." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Escenas híbridas: $(python3 -c 'import json; print(json.load(open("output/storyboard.json"))["scene_count"])')" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Montaje final validado: output/Caspitas-hybrid.mp4" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Publicación: desactivada en esta rama de pruebas." >> "$GITHUB_STEP_SUMMARY"
+          echo "- FFmpeg: preset veryfast y CRF 23; subtítulo palabra a palabra conservado sin animación spring costosa" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Voz: es-ES-AlvaroNeural (Edge TTS)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Subtítulos: palabra a palabra, sin animación spring, amarillo con borde y fondo oscuro" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Música: desactivada temporalmente; no se usará música aleatoria sin licencia verificada" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Fuentes: el guion solicita referencias; deben comprobarse manualmente, no existe verificación automática independiente." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Voz Edge TTS: derechos comerciales no confirmados; no considerar monetización verificada." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Derechos visuales: revisar origen, licencia y derechos de terceros de cada recurso Pixabay." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Publicación autorizada por los controles de derechos: ${{ steps.monetization_gate.outputs.publish_allowed }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Revisión de monetización: pendiente de verificación editorial y de derechos." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Fuente visual: Pixabay" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.monetization_gate.outputs.publish_allowed }}" = "true" ]; then
+            echo "- YouTube: publicación pública programada para ${{ steps.publish_time.outputs.scheduled_date }} (Europe/Madrid)" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Estado de programación: ${{ steps.youtube_publish.outputs.status }}" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Trabajo de Upload-Post: ${{ steps.youtube_publish.outputs.job-id }}" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- YouTube: NO publicado ni programado; los controles de derechos siguen pendientes." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Subir vídeo y datos como artefacto descargable
+        if: steps.local_time.outputs.run_now == 'true' && success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: caspitas-documental-${{ github.run_number }}
+          path: output/*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Guardar documental híbrido y storyboard como artefactos de prueba
+        if: steps.local_time.outputs.run_now == 'true' && success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: caspitas-2-hybrid-test
+          path: |
+            output/Caspitas-hybrid.mp4
+            output/storyboard.json
+            output/hybrid_qa_report.json
+            output/thumbnail.png
+            output/metadata.json
+            output/tema.txt
+            output/subtitles.srt
+            output/generation.log
+          if-no-files-found: error
+          retention-days: 7
