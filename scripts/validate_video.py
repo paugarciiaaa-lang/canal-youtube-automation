@@ -65,7 +65,7 @@ def main() -> None:
     muxed_audio_duration = float(aus.get("duration") or audio_duration)
     av_drift = abs(video_duration - muxed_audio_duration)
     if video_duration < 600:
-        raise SystemExit(f"Duración insuficiente: {video_duration/60:.2f} min; mínimo 14 min.")
+        raise SystemExit(f"Duración insuficiente: {video_duration/60:.2f} min; mínimo 10 min.")
     if av_drift > 1.0:
         raise SystemExit(f"Desincronización A/V: {av_drift:.2f}s (máximo 1.0s).")
     if (vs.get("width"), vs.get("height")) != (1920, 1080):
