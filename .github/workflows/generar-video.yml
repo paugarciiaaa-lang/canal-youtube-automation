@@ -11,6 +11,11 @@ on:
         required: false
         type: string
         default: ''
+      test_mode:
+        description: 'Prueba visual híbrida: generar artefactos de revisión y NO publicar ni programar en YouTube'
+        required: false
+        type: boolean
+        default: false
 concurrency:
   group: caspitas-generacion
   cancel-in-progress: false
@@ -390,8 +395,19 @@ jobs:
           fi
           echo "Vídeo validado y preparado: $final"
 
+      - name: Crear storyboard y vista previa visual híbrida (solo prueba)
+        if: steps.local_time.outputs.run_now == 'true' && success() && github.event.inputs.test_mode == 'true'
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet pillow
+          video="$(find output -maxdepth 1 -type f -name '*.mp4' -printf '%T@ %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+          test -n "$video"
+          python3 scripts/hybrid_storyboard.py --video "$video" --srt output/subtitles.srt --output-dir output/hybrid --preview-seconds 60
+          cp output/hybrid/hybrid-preview.mp4 output/Caspitas-hybrid-preview.mp4
+          cp output/hybrid/storyboard.json output/storyboard.json
+
       - name: Guardar tema en el historial para evitar repeticiones
-        if: steps.local_time.outputs.run_now == 'true' && success()
+        if: steps.local_time.outputs.run_now == 'true' && success() && github.event.inputs.test_mode != 'true'
         run: |
           topic_id="$(cat selected_topic_id.txt)"
           if [ -n "$topic_id" ]; then
@@ -478,7 +494,7 @@ jobs:
 
       - name: Programar documental públicamente en YouTube
         id: youtube_publish
-        if: steps.local_time.outputs.run_now == 'true' && success() && steps.monetization_gate.outputs.publish_allowed == 'true'
+        if: steps.local_time.outputs.run_now == 'true' && success() && github.event.inputs.test_mode != 'true' && steps.monetization_gate.outputs.publish_allowed == 'true'
         uses: Upload-Post/upload-post-action@v1
         with:
           api-key: ${{ secrets.UPLOAD_POST_API_KEY }}
@@ -517,7 +533,12 @@ jobs:
           echo "- Derechos visuales: revisar origen, licencia y derechos de terceros de cada recurso Pixabay." >> "$GITHUB_STEP_SUMMARY"
           echo "- Publicación autorizada por los controles de derechos: ${{ steps.monetization_gate.outputs.publish_allowed }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Revisión de monetización: pendiente de verificación editorial y de derechos." >> "$GITHUB_STEP_SUMMARY"
-          echo "- Fuente visual: Pixabay" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Fuente visual: Pixabay + storyboard híbrido cuando se activa test_mode" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ github.event.inputs.test_mode }}" = "true" ]; then
+            echo "- MODO PRUEBA: no se ha publicado ni programado en YouTube." >> "$GITHUB_STEP_SUMMARY"
+            echo "- Vista previa híbrida: output/Caspitas-hybrid-preview.mp4 (60 segundos)." >> "$GITHUB_STEP_SUMMARY"
+            echo "- Storyboard: output/storyboard.json." >> "$GITHUB_STEP_SUMMARY"
+          fi
           if [ "${{ steps.monetization_gate.outputs.publish_allowed }}" = "true" ]; then
             echo "- YouTube: publicación pública programada para ${{ steps.publish_time.outputs.scheduled_date }} (Europe/Madrid)" >> "$GITHUB_STEP_SUMMARY"
             echo "- Estado de programación: ${{ steps.youtube_publish.outputs.status }}" >> "$GITHUB_STEP_SUMMARY"
