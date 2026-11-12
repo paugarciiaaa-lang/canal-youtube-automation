@@ -28,7 +28,9 @@ RED = (214, 82, 76)
 GREEN = (105, 177, 133)
 
 def run(cmd: list[str]) -> None:
-    subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if proc.returncode:
+        raise SystemExit(proc.stderr[-6000:] or f"Comando fallido: {cmd[0]}")
 
 def ffprobe(path: Path) -> dict:
     raw = subprocess.check_output([
@@ -89,20 +91,18 @@ def text_block(draw, xy, text, size=42, color=INK, max_chars=52, spacing=12):
     return y
 
 def base_frame(index: int, total: int) -> Image.Image:
-    im = Image.new("RGB", (W, H), BG)
+    # Transparent canvas: the source documentary footage remains visible behind
+    # the explanatory card, and the lower subtitle-safe area stays unobstructed.
+    im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
-    # Cinematic gradient and subtle geometric texture.
-    for y in range(H):
-        k = y / H
-        col = (int(10 + 9*k), int(17 + 14*k), int(28 + 18*k))
-        d.line((0, y, W, y), fill=col)
-    d.rectangle((58, 58, W-58, H-58), outline=(53, 69, 87), width=2)
-    d.rectangle((58, 58, 78, H-58), fill=AMBER)
+    d.rounded_rectangle((58, 58, W-58, 900), radius=34,
+                        fill=(11, 18, 29, 242), outline=(82, 103, 126, 245), width=4)
+    d.rectangle((58, 58, 78, 900), fill=AMBER)
     d.text((112, 90), "CASPITAS  /  DOCUMENTAL", font=font(24, True), fill=MUTED)
-    d.line((112, 138, W-112, 138), fill=(61, 78, 96), width=2)
-    # Slow animated light sweep.
-    x = int(120 + (W-240) * ((index / max(1,total-1)) * .65 + .15))
-    d.ellipse((x-180, 170, x+180, 530), fill=(18, 34, 48))
+    d.line((112, 138, W-112, 138), fill=(72, 91, 112), width=2)
+    # Animated accent sweep inside the card.
+    x = int(140 + (W-280) * ((index / max(1,total-1)) * .65 + .15))
+    d.ellipse((x-180, 170, x+180, 530), fill=(18, 34, 48, 255))
     return im
 
 def draw_stickman(d, t: float, x=1450, y=440, scale=1.0, pose="investigate"):
@@ -139,49 +139,45 @@ def draw_stickman(d, t: float, x=1450, y=440, scale=1.0, pose="investigate"):
 
 def render_scene(scene: dict, folder: Path, seconds: float) -> Path:
     folder.mkdir(parents=True, exist_ok=True)
-    total = int(FPS * seconds)
+    total = FPS  # one-second animated loop; FFmpeg repeats it for the full scene window
     kind, excerpt = scene["type"], scene["excerpt"]
     for i in range(total):
         t = i / max(1, total-1)
         im = base_frame(i, total)
         d = ImageDraw.Draw(im)
-        # Scene heading and visual tag.
-        d.rounded_rectangle((120, 205, 760, 275), radius=18, fill=(35, 51, 69), outline=(72, 93, 115), width=2)
+        d.rounded_rectangle((120, 205, 760, 275), radius=18, fill=(35, 51, 69, 255), outline=(72, 93, 115, 255), width=2)
         d.text((150, 222), scene["label"].upper(), font=font(28, True), fill=AMBER)
         if kind in ("stickman", "reconstruction"):
             d.text((135, 340), "RECREACIÓN 2D", font=font(25, True), fill=CYAN)
-            d.text((135, 405), "Una representación visual,", font=font(34), fill=INK)
-            d.text((135, 455), "no una imagen de archivo.", font=font(34), fill=INK)
-            # Corridor / doorway environment.
-            d.polygon([(1120,300),(1700,300),(1830,820),(990,820)], fill=(27,43,60), outline=(79,101,124))
-            d.rectangle((1320,390,1600,820), fill=(15,26,39), outline=(117,137,154), width=8)
+            d.text((135, 405), "Representación visual,", font=font(34), fill=INK)
+            d.text((135, 455), "no imagen de archivo.", font=font(34), fill=INK)
+            d.polygon([(1120,300),(1700,300),(1830,820),(990,820)], fill=(27,43,60,255), outline=(79,101,124,255))
+            d.rectangle((1320,390,1600,820), fill=(15,26,39,255), outline=(117,137,154,255), width=8)
             d.ellipse((1535,590,1560,615), fill=AMBER)
             draw_stickman(d, t, x=1110+int(22*math.sin(t*math.tau)), y=365, scale=1, pose="walk" if kind=="reconstruction" else "investigate")
             if kind == "reconstruction":
                 d.text((1370, 340), "SECUENCIA ILUSTRADA", font=font(24, True), fill=RED)
+            text_block(d, (140, 650), excerpt, 30, INK, 48, 8)
         elif kind == "map":
             d.text((140, 340), "ESQUEMA DE LOCALIZACIÓN", font=font(30, True), fill=CYAN)
-            # Deliberately schematic: no invented borders or coordinates.
-            d.rounded_rectangle((150, 410, 1710, 790), radius=34, fill=(20,37,54), outline=(76,103,128), width=4)
+            d.rounded_rectangle((150, 410, 1710, 790), radius=34, fill=(20,37,54,255), outline=(76,103,128,255), width=4)
             for k in range(8):
                 yy = 455 + k*42
-                d.line((220, yy, 1630, yy), fill=(42,65,85), width=2)
+                d.line((220, yy, 1630, yy), fill=(42,65,85,255), width=2)
             for k in range(11):
                 xx = 250 + k*125
-                d.line((xx, 440, xx-80, 760), fill=(42,65,85), width=2)
+                d.line((xx, 440, xx-80, 760), fill=(42,65,85,255), width=2)
             px = int(520 + 700*t)
             py = int(590 + 22*math.sin(t*math.tau))
             d.line((420,650,px,py), fill=AMBER, width=12)
             d.ellipse((px-30,py-30,px+30,py+30), fill=RED, outline=INK, width=5)
             d.ellipse((px-12,py-12,px+12,py+12), fill=INK)
-            text_block(d, (220, 835), excerpt, 30, INK, 72, 8)
-            d.text((220, 965), "DIAGRAMA ORIENTATIVO · NO A ESCALA", font=font(22, True), fill=MUTED)
+            text_block(d, (220, 815), excerpt, 28, INK, 72, 7)
+            d.text((220, 870), "DIAGRAMA ORIENTATIVO · NO A ESCALA", font=font(18, True), fill=MUTED)
         elif kind == "timeline":
             d.text((145, 355), "CRONOLOGÍA", font=font(32, True), fill=CYAN)
-            d.line((230, 590, 1660, 590), fill=(101,125,148), width=8)
-            years = scene.get("years", [])
-            if not years:
-                years = ["ANTES", "DESPUÉS"]
+            d.line((230, 590, 1660, 590), fill=(101,125,148,255), width=8)
+            years = scene.get("years", []) or ["ANTES", "DESPUÉS"]
             count = min(4, len(years))
             for j, year in enumerate(years[:count]):
                 px = 280 + j * (1320 // max(1,count-1)) if count > 1 else 940
@@ -191,30 +187,27 @@ def render_scene(scene: dict, folder: Path, seconds: float) -> Path:
             text_block(d, (220, 720), excerpt, 32, INK, 70, 10)
         elif kind == "evidence":
             d.text((145, 350), "PISTA / CONTEXTO", font=font(30, True), fill=CYAN)
-            d.rounded_rectangle((250, 420, 1640, 825), radius=12, fill=(225,222,209), outline=(75,70,62), width=5)
-            d.rectangle((285,455,1605,505), fill=(44,53,63))
+            d.rounded_rectangle((250, 420, 1640, 825), radius=12, fill=(225,222,209,255), outline=(75,70,62,255), width=5)
+            d.rectangle((285,455,1605,505), fill=(44,53,63,255))
             d.text((320,466), "CASO · NOTA VISUAL", font=font(24, True), fill=(244,240,226))
             text_block(d, (330, 565), excerpt, 42, (37,43,49), 48, 18)
             d.text((330, 755), "RECREACIÓN GRÁFICA · NO ES UN DOCUMENTO ORIGINAL", font=font(21, True), fill=(142,55,48))
             d.line((1430, 535, 1550, 655), fill=RED, width=10)
             d.line((1550, 535, 1430, 655), fill=RED, width=10)
-        else:  # motion graphics
+        else:
             d.text((145, 350), "DATO DE LA NARRACIÓN", font=font(30, True), fill=CYAN)
-            focus = scene.get("focus", "DETALLE")
+            focus = scene.get("focus", "DETALLE")[:18]
             scale = 1 + .045*math.sin(t*math.tau)
-            f = font(int(112*scale), True)
-            box = d.textbbox((0,0), focus, font=f)
-            d.text(((W-(box[2]-box[0]))//2, 460), focus, font=f, fill=AMBER)
+            fnt = font(int(112*scale), True)
+            box = d.textbbox((0,0), focus, font=fnt)
+            d.text(((W-(box[2]-box[0]))//2, 460), focus, font=fnt, fill=AMBER)
             text_block(d, (250, 700), excerpt, 34, INK, 68, 10)
-        # Captured narration excerpt is displayed verbatim, not presented as an external quote.
-        d.rounded_rectangle((120, 900, W-120, 1010), radius=18, fill=(7,13,22), outline=(65,82,101), width=2)
-        short = excerpt[:150] + ("…" if len(excerpt)>150 else "")
-        text_block(d, (155, 925), short, 25, INK, 110, 5)
-        im.save(folder / f"frame_{i:05d}.png")
-    clip = folder.with_suffix(".mp4")
+        # Keep the bottom subtitle-safe band transparent so the original
+        # burned-in word captions remain in sync with the untouched narration.
+        im.resize((W//2, H//2), Image.Resampling.LANCZOS).save(folder / f"frame_{i:05d}.png")
+    clip = folder.with_suffix(".mov")
     run(["ffmpeg","-y","-loglevel","error","-framerate",str(FPS),"-i",str(folder/"frame_%05d.png"),
-         "-c:v","libx264","-preset","veryfast","-crf","22","-pix_fmt","yuv420p",
-         "-r",str(FPS),"-g",str(FPS*2),"-video_track_timescale","12288",str(clip)])
+         "-c:v","qtrle","-pix_fmt","argb","-an","-video_track_timescale","12288",str(clip)])
     return clip
 
 def classify(text: str, index: int) -> tuple[str,str]:
@@ -256,13 +249,7 @@ def plan(cues: list[dict], duration: float, interval: float, scene_seconds: floa
         index += 1
     return scenes
 
-def encode_segment(source: Path, start: float, length: float, target: Path) -> None:
-    if length <= 0.08:
-        return
-    run(["ffmpeg","-y","-loglevel","error","-ss",f"{start:.3f}","-i",str(source),"-t",f"{length:.3f}",
-         "-an","-vf",f"scale={W}:{H}:force_original_aspect_ratio=decrease,pad={W}:{H}:(ow-iw)/2:(oh-ih)/2",
-         "-r",str(FPS),"-c:v","libx264","-preset","veryfast","-crf","22","-pix_fmt","yuv420p",
-         "-g",str(FPS*2),"-video_track_timescale","12288",str(target)])
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -288,48 +275,57 @@ def main():
     args.storyboard.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="caspitas_hybrid_") as tmp:
         tmpdir = Path(tmp)
-        segments, cursor = [], 0.0
+        clips = []
         for scene in scenes:
-            start = scene["start"]
-            if start > cursor:
-                part = tmpdir / f"base_{len(segments):03d}.mp4"
-                encode_segment(source, cursor, start-cursor, part)
-                segments.append(part)
             folder = tmpdir / f"scene_{scene['index']:03d}"
-            clip = render_scene(scene, folder, args.scene_seconds)
-            segments.append(clip)
-            cursor = start + args.scene_seconds
-        if cursor < duration:
-            part = tmpdir / f"base_{len(segments):03d}.mp4"
-            encode_segment(source, cursor, duration-cursor, part)
-            segments.append(part)
-        listing = tmpdir / "concat.txt"
-        listing.write_text("".join(f"file '{p.as_posix()}'\n" for p in segments), encoding="utf-8")
-        silent = tmpdir / "hybrid_video_only.mp4"
-        run(["ffmpeg","-y","-loglevel","error","-f","concat","-safe","0","-i",str(listing),
-             "-c","copy","-movflags","+faststart",str(silent)])
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        run(["ffmpeg","-y","-loglevel","error","-i",str(silent),"-i",str(source),
-             "-map","0:v:0","-map","1:a:0","-c:v","copy","-c:a","copy","-shortest",
-             "-movflags","+faststart",str(args.output)])
+            clips.append(render_scene(scene, folder, args.scene_seconds))
+        cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(source)]
+        for clip in clips:
+            cmd.extend(["-stream_loop", "-1", "-i", str(clip)])
+        filters = []
+        previous = "0:v"
+        for i, scene in enumerate(scenes):
+            start = scene["start"]
+            end = start + scene["duration"]
+            filters.append(
+                f"[{i+1}:v]trim=duration={scene['duration']:.3f},"
+                f"setpts=PTS-STARTPTS+{start:.3f}/TB,scale={W}:{H}:flags=lanczos,"
+                f"format=rgba[ov{i}]"
+            )
+            filters.append(
+                f"[{previous}][ov{i}]overlay=0:0:format=auto:eof_action=pass:repeatlast=0:"
+                f"enable='between(t,{start:.3f},{end:.3f})'[v{i}]"
+            )
+            previous = f"v{i}"
+        cmd.extend([
+            "-filter_complex", ";".join(filters),
+            "-map", f"[{previous}]", "-map", "0:a:0",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
+            "-pix_fmt", "yuv420p", "-c:a", "copy", "-shortest",
+            "-movflags", "+faststart", str(args.output)
+        ])
+        run(cmd)
     final_meta = ffprobe(args.output)
     final_duration = float(final_meta["format"]["duration"])
     drift = abs(final_duration-duration)
     if drift > 1.0:
         raise SystemExit(f"El montaje híbrido alteró la duración ({drift:.2f}s).")
     storyboard = {
-        "version":"caspitas-hybrid-mvp-1",
+        "version":"caspitas-hybrid-mvp-2",
         "source_video":source.name,
         "duration_seconds":round(duration,3),
         "final_duration_seconds":round(final_duration,3),
         "audio_preserved":True,
+        "subtitle_timing_preserved":True,
         "scene_count":len(scenes),
         "inserted_visual_seconds":round(sum(s["duration"] for s in scenes),3),
-        "visual_mix_note":"El vídeo documental original conserva sus imágenes y vídeos de archivo entre las inserciones. Los mapas son esquemáticos y los documentos/reconstrucciones se rotulan como recreaciones.",
+        "visual_mix_note":"El vídeo documental original permanece como base. Se superponen tarjetas animadas 2D en ventanas temporales sin desplazar el vídeo ni el audio; la franja inferior queda libre para conservar los subtítulos originales. Mapas esquemáticos, documentos y reconstrucciones se identifican como recreaciones, nunca como pruebas originales.",
         "scenes":scenes
     }
     args.storyboard.write_text(json.dumps(storyboard,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     print(json.dumps({k:storyboard[k] for k in ("scene_count","inserted_visual_seconds","duration_seconds","final_duration_seconds")},ensure_ascii=False))
+
+
 
 if __name__ == "__main__":
     main()
