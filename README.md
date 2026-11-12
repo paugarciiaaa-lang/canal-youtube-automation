@@ -51,6 +51,20 @@ python scripts/shorts_queue.py mark --video-id doc-001 --short-number 3 --publis
 
 Los vídeos deben estar generados y disponibles antes de su hora de publicación. La cola solo decide qué archivo corresponde a cada franja; la integración de renderizado y publicación se añade en fases posteriores.
 
+## Prueba visual híbrida (Caspitas 2.0)
+
+El workflow `.github/workflows/generar-video.yml` incluye el parámetro manual `test_mode`:
+
+1. Abre Actions → Generar vídeo del canal → Run workflow.
+2. Introduce un tema de prueba o deja que se seleccione uno.
+3. Activa `test_mode`.
+4. La ejecución genera el documental, analiza sus subtítulos y crea un storyboard con seis tratamientos visuales: archivo documental, mapa esquemático, cronología, evidencias, reconstrucción 2D y explicación visual/whiteboard.
+5. Produce una vista previa de 60 segundos superpuesta sobre el vídeo original y guarda `storyboard.json` como artefacto.
+
+**Seguridad:** con `test_mode=true` no se programa ni publica en YouTube y el tema no se añade al historial. El MP4 original no se modifica. Los mapas de la muestra son esquemáticos y las tarjetas son gráficos de prueba; no deben confundirse con mapas geográficos o documentos históricos verificados.
+
+Script: `scripts/hybrid_storyboard.py`. Pruebas: `tests/test_hybrid_storyboard.py`.
+
 ## Pruebas
 
 ```bash
