@@ -20,6 +20,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
+      - name: Exigir la rama aislada de pruebas
+        run: |
+          if [ "$GITHUB_REF_NAME" != "caspitas-2.0-hybrid-test" ]; then
+            echo "::error::En Run workflow selecciona la rama caspitas-2.0-hybrid-test. No ejecutes esta prueba en main."
+            exit 1
+          fi
+
       - name: Comprobar que son las 21:00 en España
         id: local_time
         run: |
@@ -72,6 +79,12 @@ jobs:
       - name: Instalar Pillow para crear miniaturas
         if: steps.local_time.outputs.run_now == 'true'
         run: python -m pip install pillow
+
+      - name: Ejecutar pruebas del motor visual híbrido
+        if: steps.local_time.outputs.run_now == 'true'
+        run: |
+          python3 -m py_compile scripts/hybrid_visual_engine.py
+          python3 -m unittest discover -s tests -v
 
       - name: Elegir tema sin repetir innecesariamente
         if: steps.local_time.outputs.run_now == 'true'
