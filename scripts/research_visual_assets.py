@@ -54,7 +54,8 @@ def make_map(place,out):
     out.parent.mkdir(parents=True,exist_ok=True); canvas.save(out)
     return {"path":str(out),"asset_type":"verified_osm_map","attribution":"© OpenStreetMap contributors, ODbL",
             "source_url":place["source_url"],"verified_place":place["display_name"],
-            "coordinates":[place["lat"],place["lon"]],"tiles_used":successful}
+            "coordinates":[place["lat"],place["lon"]],"marker_xy":[px,py],"map_size":[768,768],
+            "tiles_used":successful}
 
 def clean_html(value):
     return re.sub(r"<[^>]+>","",value or "").strip()
