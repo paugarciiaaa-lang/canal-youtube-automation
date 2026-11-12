@@ -76,9 +76,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Instalar Pillow para crear miniaturas
+      - name: Instalar Pillow y yt-dlp para recursos visuales y benchmark
         if: steps.local_time.outputs.run_now == 'true'
-        run: python -m pip install pillow
+        run: python -m pip install pillow yt-dlp
 
       - name: Ejecutar pruebas del motor visual híbrido
         if: steps.local_time.outputs.run_now == 'true'
@@ -396,7 +396,37 @@ jobs:
           fi
           echo "Vídeo validado y preparado: $final"
 
-      - name: Analizar guion, crear storyboard y montar capa visual híbrida
+      - name: Analizar competencia con datos públicos de YouTube
+        if: steps.local_time.outputs.run_now == 'true' && success()
+        run: |
+          set -euo pipefail
+          python3 scripts/competitor_benchmark.py \
+            --topic "$(cat output/tema.txt)" \
+            --output output/competitor_benchmark.json
+
+      - name: Crear storyboard semántico con IA
+        if: steps.local_time.outputs.run_now == 'true' && success()
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/semantic_storyboard.py
+          python3 scripts/semantic_storyboard.py \
+            --srt output/subtitles.srt \
+            --topic "$(cat output/tema.txt)" \
+            --benchmark output/competitor_benchmark.json \
+            --output output/semantic_storyboard.json
+
+      - name: Verificar mapas y buscar documentos/fotografías con licencia
+        if: steps.local_time.outputs.run_now == 'true' && success()
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/research_visual_assets.py
+          python3 scripts/research_visual_assets.py \
+            --storyboard output/semantic_storyboard.json \
+            --output-dir output/visual_assets
+
+      - name: Montar documental con storyboard semántico y recursos verificados
         id: hybrid_visuals
         if: steps.local_time.outputs.run_now == 'true' && success()
         run: |
@@ -405,6 +435,7 @@ jobs:
           python3 scripts/hybrid_visual_engine.py \
             --video "${{ steps.prepared_video.outputs.video_path }}" \
             --srt output/subtitles.srt \
+            --plan output/semantic_storyboard.json \
             --output output/Caspitas-hybrid.mp4 \
             --storyboard output/storyboard.json \
             --interval 55 \
@@ -415,7 +446,7 @@ jobs:
           cp output/subtitles.srt output/hybrid_qa/subtitle.srt
           python3 scripts/validate_video.py output/hybrid_qa/video.mp4 --report output/hybrid_qa_report.json
           echo "video_path=output/Caspitas-hybrid.mp4" >> "$GITHUB_OUTPUT"
-          echo "Storyboard híbrido creado y validación técnica completada."
+          echo "Montaje semántico completado; audio y subtítulos conservados."
 
       - name: Guardar tema en el historial para evitar repeticiones
         if: steps.local_time.outputs.run_now == 'true' && success()
@@ -467,34 +498,6 @@ jobs:
           print("thumbnail_path=output/thumbnail.png")
           PY
 
-      - name: Comprobación final de derechos antes de publicar
-        id: monetization_gate
-        if: steps.local_time.outputs.run_now == 'true' && success()
-        env:
-          VOICE_LICENSE_CONFIRMED: ${{ secrets.VOICE_COMMERCIAL_LICENSE_CONFIRMED }}
-          SOURCES_VERIFIED: ${{ secrets.RESEARCH_SOURCES_VERIFIED }}
-          VISUAL_LICENSES_VERIFIED: ${{ secrets.VISUAL_LICENSES_VERIFIED }}
-        run: |
-          allowed=true
-          if [ "$VOICE_LICENSE_CONFIRMED" != "yes" ]; then
-            echo "::warning::Publicación bloqueada: falta confirmar por escrito la licencia comercial de la voz."
-            allowed=false
-          fi
-          if [ "$SOURCES_VERIFIED" != "yes" ]; then
-            echo "::warning::Publicación bloqueada: falta verificar las fuentes documentales del episodio."
-            allowed=false
-          fi
-          if [ "$VISUAL_LICENSES_VERIFIED" != "yes" ]; then
-            echo "::warning::Publicación bloqueada: falta revisar licencias y derechos de terceros de los recursos visuales."
-            allowed=false
-          fi
-          echo "publish_allowed=$allowed" >> "$GITHUB_OUTPUT"
-          if [ "$allowed" = "true" ]; then
-            echo "Controles documentales y de derechos confirmados."
-          else
-            echo "El vídeo se conservará como artefacto privado de revisión; no se programará en YouTube."
-          fi
-
       - name: Resumen de la generación
         if: steps.local_time.outputs.run_now == 'true' && success()
         run: |
@@ -505,8 +508,12 @@ jobs:
           echo "- Control técnico: $(python3 -c 'import json; print(json.load(open("output/qa_report.json"))["status"])')" >> "$GITHUB_STEP_SUMMARY"
           echo "- Sincronización A/V: $(python3 -c 'import json; print(json.load(open("output/qa_report.json"))["audio_video_drift_seconds"])') segundos de diferencia" >> "$GITHUB_STEP_SUMMARY"
           echo "- Subtítulos: $(python3 -c 'import json; print(json.load(open("output/qa_report.json"))["subtitle_cues"])') cues revisados; comprobar también la escucha final" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Motor visual híbrido: storyboard automático y escenas 2D esquemáticas intercaladas con el material documental original." >> "$GITHUB_STEP_SUMMARY"
-          echo "- Escenas híbridas: $(python3 -c 'import json; print(json.load(open("output/storyboard.json"))["scene_count"])')" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Analizador visual: $(python3 -c 'import json; print(json.load(open("output/storyboard.json"))["planner"])')" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Escenas semánticas: $(python3 -c 'import json; print(json.load(open("output/storyboard.json"))["scene_count"])')" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Mapas verificados: $(python3 -c 'import json; print(json.load(open("output/visual_assets/visual_asset_manifest.json"))["maps_found"])')" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Imágenes Commons con licencia identificada: $(python3 -c 'import json; print(json.load(open("output/visual_assets/visual_asset_manifest.json"))["licensed_commons_candidates"])')" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Benchmark competencia: $(python3 -c 'import json; print(json.load(open("output/competitor_benchmark.json"))["status"])')" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Parallax: capas 2D con fondo difuminado y desplazamiento independiente; profundidad neuronal no incluida." >> "$GITHUB_STEP_SUMMARY"
           echo "- Montaje final validado: output/Caspitas-hybrid.mp4" >> "$GITHUB_STEP_SUMMARY"
           echo "- Publicación: desactivada en esta rama de pruebas." >> "$GITHUB_STEP_SUMMARY"
           echo "- FFmpeg: preset veryfast y CRF 23; subtítulo palabra a palabra conservado sin animación spring costosa" >> "$GITHUB_STEP_SUMMARY"
@@ -516,14 +523,9 @@ jobs:
           echo "- Fuentes: el guion solicita referencias; deben comprobarse manualmente, no existe verificación automática independiente." >> "$GITHUB_STEP_SUMMARY"
           echo "- Voz Edge TTS: derechos comerciales no confirmados; no considerar monetización verificada." >> "$GITHUB_STEP_SUMMARY"
           echo "- Derechos visuales: revisar origen, licencia y derechos de terceros de cada recurso Pixabay." >> "$GITHUB_STEP_SUMMARY"
-          echo "- Publicación autorizada por los controles de derechos: ${{ steps.monetization_gate.outputs.publish_allowed }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Revisión de monetización: pendiente de verificación editorial y de derechos." >> "$GITHUB_STEP_SUMMARY"
-          echo "- Fuente visual: Pixabay" >> "$GITHUB_STEP_SUMMARY"
-          if [ "${{ steps.monetization_gate.outputs.publish_allowed }}" = "true" ]; then
-            echo "- YouTube: publicación pública programada para ${{ steps.publish_time.outputs.scheduled_date }} (Europe/Madrid)" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "- YouTube: NO publicado ni programado; los controles de derechos siguen pendientes." >> "$GITHUB_STEP_SUMMARY"
-          fi
+          echo "- Publicación: desactivada en esta rama de pruebas." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Licencias y autenticidad: revisión humana obligatoria; la búsqueda automática no certifica monetización." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Recursos visuales base: Pixabay; se añaden candidatos Commons y mapas OSM con atribución." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Subir vídeo y datos como artefacto descargable
         if: steps.local_time.outputs.run_now == 'true' && success()
@@ -542,6 +544,9 @@ jobs:
           path: |
             output/Caspitas-hybrid.mp4
             output/storyboard.json
+            output/semantic_storyboard.json
+            output/competitor_benchmark.json
+            output/visual_assets/**
             output/hybrid_qa_report.json
             output/thumbnail.png
             output/metadata.json
