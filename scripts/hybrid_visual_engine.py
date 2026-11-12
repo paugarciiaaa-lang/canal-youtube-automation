@@ -223,7 +223,7 @@ def render_scene(scene: dict, folder: Path, seconds: float) -> Path:
                 if marker and len(marker)==2:
                     box=(175,390,1745,805)
                     mw,mh=box[2]-box[0],box[3]-box[1]
-                    scale=min(mw/map_size[0],mh/map_size[1])
+                    scale=min((mw*.82)/map_size[0],(mh*.82)/map_size[1])
                     fw,fh=int(map_size[0]*scale),int(map_size[1]*scale)
                     ox=box[0]+(mw-fw)//2; oy=box[1]+(mh-fh)//2
                     mx=ox+int(marker[0]*scale); my=oy+int(marker[1]*scale)
@@ -370,6 +370,11 @@ def main():
         planner="heuristic_fallback"
     if len(scenes) < 3:
         raise SystemExit("No hay suficientes escenas/subtítulos para crear una prueba híbrida fiable.")
+    # Stable recurring character identity: same model and outfit, varied poses only.
+    for scene in scenes:
+        if scene.get("type") in ("stickman", "reconstruction"):
+            scene["character_id"] = "caspitas_explorer_v1"
+            scene["character_design_lock"] = "chaqueta azul gris, mochila marrón, gorro oscuro, rostro expresivo; no cambiar proporciones ni vestuario"
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.storyboard.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="caspitas_hybrid_") as tmp:
