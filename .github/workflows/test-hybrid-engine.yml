@@ -29,7 +29,7 @@ jobs:
 
       - name: Compilar y ejecutar pruebas unitarias
         run: |
-          python3 -m py_compile scripts/hybrid_visual_engine.py
+          python3 -m py_compile scripts/hybrid_visual_engine.py scripts/semantic_storyboard.py scripts/research_visual_assets.py scripts/competitor_benchmark.py
           python3 -m unittest discover -s tests -v
 
       - name: Crear documental sintético de tres minutos
