@@ -414,10 +414,50 @@ jobs:
           PY
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add data/topic_history.json
-            if ! git diff --cached --quiet; then
+
+            # El historial puede haber cambiado mientras se generaba el vídeo.
+            # Integramos siempre la versión remota más reciente y fusionamos IDs,
+            # evitando sobrescribir avances de otra ejecución.
+            pushed=false
+            for attempt in 1 2 3 4 5; do
+              git fetch origin "${GITHUB_REF_NAME}"
+              git checkout "origin/${GITHUB_REF_NAME}" -- data/topic_history.json
+              python3 - "$topic_id" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          path = Path("data/topic_history.json")
+          data = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"used_ids": []}
+          topics = json.loads(Path("data/topics.json").read_text(encoding="utf-8"))
+          all_ids = {item["id"] for item in topics}
+          used = list(dict.fromkeys(data.get("used_ids", [])))
+          if all_ids and all_ids.issubset(set(used)):
+              used = []
+          if sys.argv[1] and sys.argv[1] not in used:
+              used.append(sys.argv[1])
+          data["used_ids"] = used
+          path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+          PY
+              git add data/topic_history.json
+              if git diff --cached --quiet; then
+                echo "El tema ya estaba registrado en el historial remoto."
+                pushed=true
+                break
+              fi
+              git reset --soft "origin/${GITHUB_REF_NAME}"
+              git add data/topic_history.json
               git commit -m "Actualizar historial de temas de Caspitas"
-              git push origin "HEAD:${GITHUB_REF_NAME}"
+              if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+                pushed=true
+                break
+              fi
+              echo "El remoto volvió a avanzar; se reintentará fusionando el historial actualizado (intento $attempt/5)."
+              git reset --hard "origin/${GITHUB_REF_NAME}"
+            done
+            if [ "$pushed" != "true" ]; then
+              echo "::error::No se pudo actualizar el historial tras 5 intentos. El vídeo generado se conservará como artefacto."
+              exit 1
             fi
           fi
 
