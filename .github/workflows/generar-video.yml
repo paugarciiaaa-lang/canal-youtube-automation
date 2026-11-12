@@ -403,6 +403,58 @@ jobs:
             echo "Tema introducido manualmente; no se modifica el historial automático."
           fi
 
+      - name: Instalar herramientas del motor visual híbrido
+        if: steps.local_time.outputs.run_now == 'true'
+        run: python -m pip install pillow yt-dlp
+
+      - name: Analizar referencias visuales públicas del tema
+        if: steps.local_time.outputs.run_now == 'true' && success()
+        run: |
+          set -euo pipefail
+          python3 scripts/competitor_benchmark.py \
+            --topic "$(cat output/tema.txt)" \
+            --output output/competitor_benchmark.json
+
+      - name: Crear storyboard semántico con continuidad visual Caspitas
+        if: steps.local_time.outputs.run_now == 'true' && success()
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/semantic_storyboard.py
+          python3 scripts/semantic_storyboard.py \
+            --srt output/subtitles.srt \
+            --topic "$(cat output/tema.txt)" \
+            --benchmark output/competitor_benchmark.json \
+            --output output/semantic_storyboard.json
+
+      - name: Buscar mapas y material documental con licencia identificable
+        if: steps.local_time.outputs.run_now == 'true' && success()
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/research_visual_assets.py
+          python3 scripts/research_visual_assets.py \
+            --storyboard output/semantic_storyboard.json \
+            --output-dir output/visual_assets
+
+      - name: Aplicar ilustraciones cómic y montaje visual híbrido
+        id: hybrid_visuals
+        if: steps.local_time.outputs.run_now == 'true' && success()
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/hybrid_visual_engine.py
+          python3 scripts/hybrid_visual_engine.py \
+            --video "${{ steps.prepared_video.outputs.video_path }}" \
+            --srt output/subtitles.srt \
+            --plan output/semantic_storyboard.json \
+            --output output/Caspitas-hybrid.mp4 \
+            --storyboard output/storyboard.json \
+            --interval 55 \
+            --scene-seconds 4.5
+          python3 scripts/validate_video.py output/Caspitas-hybrid.mp4 --report output/hybrid_qa_report.json
+          echo "video_path=output/Caspitas-hybrid.mp4" >> "$GITHUB_OUTPUT"
+          echo "Montaje visual híbrido completado; se conserva el audio original."
+
       - name: Crear título, descripción y miniatura whiteboard
         id: youtube_assets
         if: steps.local_time.outputs.run_now == 'true' && success()
@@ -467,7 +519,7 @@ jobs:
           profile: default
           type: video
           platforms: youtube
-          media: ${{ steps.prepared_video.outputs.video_path }}
+          media: ${{ steps.hybrid_visuals.outputs.video_path }}
           text: ${{ steps.youtube_assets.outputs.title }}
           scheduled-date: ${{ steps.publish_time.outputs.scheduled_date }}
           timezone: Europe/Madrid
