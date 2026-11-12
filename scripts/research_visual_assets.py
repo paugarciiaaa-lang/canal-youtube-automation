@@ -100,8 +100,15 @@ def main():
         try:
           place=geocode(scene["location_query"])
           if place:
-            asset=make_map(place,a.output_dir/f"map_{scene['index']:02d}.png")
-            if asset: map_count+=1
+            core=scene["location_query"].split(",")[0].strip().casefold()
+            tokens=[x for x in re.findall(r"[a-z0-9áéíóúüñ]+",core) if len(x)>2]
+            display=place["display_name"].casefold()
+            if not tokens or not all(token in display for token in tokens):
+              asset={"status":"geocoding_name_mismatch","query":scene["location_query"],
+                     "candidate":place["display_name"]}
+            else:
+              asset=make_map(place,a.output_dir/f"map_{scene['index']:02d}.png")
+              if asset: map_count+=1
           else: asset={"status":"geocoding_no_match","query":scene["location_query"]}
         except Exception as exc: asset={"status":"map_unavailable","reason":type(exc).__name__}
       elif scene.get("type") in ("document","photo","parallax") and scene.get("document_search"):
