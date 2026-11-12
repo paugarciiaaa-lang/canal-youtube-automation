@@ -360,6 +360,9 @@ jobs:
           python3 ../scripts/validate_video.py "$video" --report ../output/qa_report.json
           task_dir="$(dirname "$video")"
           cp "$task_dir/subtitle.srt" ../output/subtitles.srt
+          # The downstream validators need the original narration and SRT beside each rendered MP4.
+          cp "$task_dir/subtitle.srt" ../output/subtitle.srt
+          cp "$task_dir/audio.mp3" ../output/audio.mp3
           cp ../generation.log ../output/generation.log
 
       - name: Validar duración y preparar el vídeo final
@@ -466,6 +469,12 @@ jobs:
             --storyboard output/storyboard.json \
             --interval 55 \
             --scene-seconds 4.5
+          python3 -m py_compile scripts/validate_storyboard.py
+          python3 scripts/validate_storyboard.py \
+            --storyboard output/storyboard.json \
+            --srt output/subtitles.srt \
+            --assets-manifest output/visual_assets/visual_asset_manifest.json \
+            --report output/storyboard_qa_report.json
           python3 scripts/validate_video.py output/Caspitas-hybrid.mp4 --report output/hybrid_qa_report.json
           echo "video_path=output/Caspitas-hybrid.mp4" >> "$GITHUB_OUTPUT"
           echo "Montaje visual híbrido completado; se conserva el audio original."
@@ -580,6 +589,10 @@ jobs:
           echo "- Subtítulos: palabra a palabra, sin animación spring, amarillo con borde y fondo oscuro" >> "$GITHUB_STEP_SUMMARY"
           echo "- Música: desactivada temporalmente; no se usará música aleatoria sin licencia verificada" >> "$GITHUB_STEP_SUMMARY"
           echo "- Efectos: sonidos originales sintetizados por código, mezcla suave y sin bibliotecas externas; revisar auditivamente." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Mapas: marcador geocodificado animado solo cuando el lugar y la fuente OSM se han podido verificar; sin rutas inventadas." >> "$GITHUB_STEP_SUMMARY"
+          echo "- 2.5D: fondo y primer plano en capas, zoom lento y desplazamiento independiente; escenas renderizadas durante toda su duración." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Continuidad: identidad Caspitas Explorer bloqueada entre recreaciones ilustradas." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Storyboard QA: $(python3 -c 'import json; print(json.load(open("output/storyboard_qa_report.json"))["status"])') — base literal, licencias y procedencia." >> "$GITHUB_STEP_SUMMARY"
           echo "- Informe SFX: output/sfx_report.json y output/sfx_qa_report.json" >> "$GITHUB_STEP_SUMMARY"
           echo "- Fuentes: el guion solicita referencias; deben comprobarse manualmente, no existe verificación automática independiente." >> "$GITHUB_STEP_SUMMARY"
           echo "- Voz Edge TTS: derechos comerciales no confirmados; no considerar monetización verificada." >> "$GITHUB_STEP_SUMMARY"
