@@ -509,7 +509,6 @@ jobs:
           if [ "${{ steps.monetization_gate.outputs.publish_allowed }}" = "true" ]; then
             echo "- YouTube: publicación pública programada para ${{ steps.publish_time.outputs.scheduled_date }} (Europe/Madrid)" >> "$GITHUB_STEP_SUMMARY"
             echo "- Estado de programación: ${{ steps.youtube_publish.outputs.status }}" >> "$GITHUB_STEP_SUMMARY"
-            echo "- Trabajo de Upload-Post: ${{ steps.youtube_publish.outputs.job-id }}" >> "$GITHUB_STEP_SUMMARY"
           else
             echo "- YouTube: NO publicado ni programado; los controles de derechos siguen pendientes." >> "$GITHUB_STEP_SUMMARY"
           fi
