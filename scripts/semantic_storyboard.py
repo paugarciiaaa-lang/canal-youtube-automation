@@ -20,7 +20,12 @@ def read_srt(path):
 
 def extract_json(value):
     value=value.strip()
-    value=re.sub(r"^.{3}(?:json)?\s*|\s*.{3}$","",value,flags=re.I)
+    ticks=chr(96)*3
+    if value.startswith(ticks):
+        value=value[3:]
+        if value.lower().startswith("json"): value=value[4:]
+        if ticks in value: value=value.rsplit(ticks,1)[0]
+        value=value.strip()
     try: return json.loads(value)
     except json.JSONDecodeError:
         match=re.search(r"\{.*\}",value,re.S)
@@ -34,6 +39,7 @@ def main():
     p.add_argument("--output",required=True,type=Path)
     p.add_argument("--api-key",default=os.getenv("OPENROUTER_API_KEY",""))
     p.add_argument("--model",default="nvidia/nemotron-3-ultra-550b-a55b:free")
+    p.add_argument("--benchmark",type=Path,default=None)
     a=p.parse_args()
     if not a.api_key: raise SystemExit("Falta OPENROUTER_API_KEY para el storyboard semántico.")
     cues=read_srt(a.srt)
@@ -45,7 +51,16 @@ def main():
         txt=" ".join(c["text"] for c in group)
         if txt: windows.append({"start":round(cursor,2),"end":round(min(duration,cursor+48),2),"transcript":txt[:5200]})
         cursor+=48
-    brief={"topic":a.topic,"windows":windows,
+    benchmark={}
+    if a.benchmark and a.benchmark.is_file():
+        try:
+            raw_benchmark=json.loads(a.benchmark.read_text(encoding="utf-8"))
+            benchmark={"status":raw_benchmark.get("status"),"videos":[
+                {"title":x.get("title"),"channel":x.get("channel"),"views":x.get("views"),
+                 "duration_seconds":x.get("duration_seconds"),"url":x.get("url")}
+                for x in raw_benchmark.get("videos",[])[:8]]}
+        except Exception: benchmark={"status":"unavailable"}
+    brief={"topic":a.topic,"windows":windows,"public_competitor_benchmark":benchmark,
       "instructions":"Crea un storyboard documental semántico. Devuelve SOLO JSON con scenes. Cada escena: start,duration,type,label,excerpt,purpose,focus,years,location_query,document_search,visual_search,confidence,factual_basis. Tipos permitidos: photo,map,document,reconstruction,stickman,timeline,motion_graphic,parallax. Una escena útil por ventana como máximo. Usa únicamente datos explícitos de la transcripción. No inventes lugares, fechas, personas, citas, documentos, estadísticas, rutas ni fuentes. location_query solo si un lugar real aparece literalmente en el texto. document_search solo como consulta para buscar material; no afirmes que existe ni que es auténtico. factual_basis debe ser una frase textual de la transcripción. excerpt máximo 220 caracteres. Duración 4-6 segundos y dentro de la ventana. Alterna tipos visuales y evita Stickman constante. Devuelve JSON estricto."}
     prompt="Eres director documental e investigador visual. Diseña el storyboard solo con la transcripción proporcionada. "+json.dumps(brief,ensure_ascii=False)
     body=json.dumps({"model":a.model,"temperature":0.15,"max_tokens":6500,
@@ -65,7 +80,8 @@ def main():
         start=max(0,float(item.get("start",0)))
         window=next((w for w in windows if w["start"]<=start<w["end"]),None)
         if not window: continue
-        length=min(6,max(4,float(item.get("duration",4.5)),),window["end"]-start)
+        length=min(6.0,max(4.0,float(item.get("duration",4.5))))
+        length=min(length,window["end"]-start)
         excerpt=str(item.get("excerpt","")).strip()[:220]
         basis=str(item.get("factual_basis","")).strip()[:220]
         confidence=max(0,min(1,float(item.get("confidence",0.5))))
