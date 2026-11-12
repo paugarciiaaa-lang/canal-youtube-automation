@@ -32,6 +32,57 @@ def extract_json(value):
         if match: return json.loads(match.group(0))
         raise
 
+def normalize_evidence(value):
+    import unicodedata
+    value=unicodedata.normalize("NFKD",value.casefold())
+    value="".join(ch for ch in value if not unicodedata.combining(ch))
+    return re.sub(r"[^a-z0-9]+"," ",value).strip()
+
+def transcript_grounded_scenes(cues, windows, existing):
+    """Auditable fallback: scenes are built only from literal subtitle passages."""
+    fallback=[]
+    occupied=[(x["start"],x["start"]+x["duration"]) for x in existing]
+    for window in windows:
+        candidates=[x for x in cues if window["start"] <= x["start"] < window["end"]]
+        if not candidates:
+            continue
+        midpoint=(window["start"]+window["end"])/2
+        anchor=min(candidates,key=lambda x:abs(x["start"]-midpoint))
+        start_index=cues.index(anchor)
+        selected=[x for x in cues[start_index:] if x["start"] < min(window["end"],anchor["start"]+12)]
+        excerpt=" ".join(x["text"] for x in selected).strip()
+        if len(excerpt)<28:
+            selected=[x for x in cues if window["start"] <= x["start"] < min(window["end"],anchor["start"]+18)]
+            excerpt=" ".join(x["text"] for x in selected).strip()
+        excerpt=re.sub(r"\s+"," ",excerpt).strip()[:220]
+        if len(excerpt)<28:
+            continue
+        start=round(anchor["start"],3)
+        if any(start < end+12 and start+4.5 > begin-12 for begin,end in occupied):
+            continue
+        if re.search(r"\b(18|19|20)\d{2}\b",excerpt):
+            kind="timeline"
+            years=re.findall(r"\b(?:18|19|20)\d{2}\b",excerpt)[:4]
+            label="Fecha mencionada en el relato"
+        elif re.search(r"\b(llego|llegó|entro|entró|salio|salió|camino|caminó|viajo|viajó|encontro|encontró|desaparecio|desapareció|cruzo|cruzó|huyo|huyó)\b",excerpt.casefold()):
+            kind="stickman"
+            years=[]
+            label="Recreación ilustrativa"
+        else:
+            kind="motion_graphic"
+            years=[]
+            label="Idea del fragmento narrado"
+        fallback.append({
+            "index":0,"start":start,"duration":4.5,"type":kind,
+            "label":label,"excerpt":excerpt,
+            "purpose":"Apoyo visual construido a partir del subtítulo literal; no añade hechos externos.",
+            "focus":"","years":years,"location_query":"",
+            "document_search":"","visual_search":"","confidence":0.60,
+            "factual_basis":excerpt,"planner":"transcript_grounded_fallback"
+        })
+        occupied.append((start,start+4.5))
+    return fallback
+
 def main():
     p=argparse.ArgumentParser()
     p.add_argument("--srt",required=True,type=Path)
@@ -73,6 +124,7 @@ def main():
     parsed=extract_json(response["choices"][0]["message"]["content"])
     allowed={"photo","map","document","reconstruction","stickman","timeline","motion_graphic","parallax"}
     transcript_norm=re.sub(r"\s+"," "," ".join(c["text"] for c in cues)).casefold()
+    transcript_evidence=normalize_evidence(transcript_norm)
     scenes=[]
     for item in parsed.get("scenes",[]):
       try:
@@ -85,10 +137,10 @@ def main():
         length=min(length,window["end"]-start)
         excerpt=str(item.get("excerpt","")).strip()[:220]
         basis=str(item.get("factual_basis","")).strip()[:220]
-        basis_norm=re.sub(r"\s+"," ",basis).casefold()
-        if not basis_norm or basis_norm not in transcript_norm: continue
-        excerpt_norm=re.sub(r"\s+"," ",excerpt).casefold()
-        if not excerpt_norm or excerpt_norm not in transcript_norm: excerpt=basis
+        basis_norm=normalize_evidence(basis)
+        if not basis_norm or basis_norm not in transcript_evidence: continue
+        excerpt_norm=normalize_evidence(excerpt)
+        if not excerpt_norm or excerpt_norm not in transcript_evidence: excerpt=basis
         location=str(item.get("location_query","")).strip()[:160]
         location_core=location.split(",")[0].strip()
         if location_core and location_core.casefold() not in transcript_norm: location=""
@@ -115,10 +167,25 @@ def main():
     for scene in scenes:
       if chosen and scene["start"]<chosen[-1]["start"]+chosen[-1]["duration"]+12: continue
       chosen.append(scene)
-    if len(chosen)<3: raise SystemExit("Storyboard semántico insuficiente: menos de 3 escenas verificables. Se detiene sin fallback silencioso.")
-    result={"version":"caspitas-semantic-storyboard-v1","planner":"OpenRouter LLM","model":a.model,
-      "topic":a.topic,"transcript_windows":len(windows),"scene_count":len(chosen),"scenes":chosen,
-      "limitations":["Lugares y documentos son candidatos, no hechos verificados.","La verificación de mapas y licencias se hace aparte.","No se dispone de métricas privadas de retención."]}
+    fallback_used=False
+    if len(chosen)<3:
+        fallback_used=True
+        supplemental=transcript_grounded_scenes(cues,windows,chosen)
+        chosen.extend(supplemental)
+        chosen.sort(key=lambda x:x["start"])
+        # Reindex and keep a conservative, non-overlapping visual cadence.
+        spaced=[]
+        for scene in chosen:
+            if spaced and scene["start"] < spaced[-1]["start"]+spaced[-1]["duration"]+12:
+                continue
+            scene["index"]=len(spaced)+1
+            spaced.append(scene)
+        chosen=spaced
+    if len(chosen)<3:
+        raise SystemExit("Storyboard insuficiente: el modelo y los subtítulos no aportan 3 fragmentos visuales literales utilizables.")
+    result={"version":"caspitas-semantic-storyboard-v2","planner":"OpenRouter LLM + subtítulos literales" if fallback_used else "OpenRouter LLM","model":a.model,
+      "topic":a.topic,"transcript_windows":len(windows),"scene_count":len(chosen),"fallback_used":fallback_used,"scenes":chosen,
+      "limitations":["Las escenas de respaldo se construyen con fragmentos literales de subtítulos; no añaden hechos externos.","Lugares y documentos son candidatos, no hechos verificados.","La verificación de mapas y licencias se hace aparte.","No se dispone de métricas privadas de retención."]}
     a.output.parent.mkdir(parents=True,exist_ok=True)
     a.output.write_text(json.dumps(result,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     print(f"Storyboard semántico: {len(chosen)} escenas; {len(windows)} fragmentos analizados.")
