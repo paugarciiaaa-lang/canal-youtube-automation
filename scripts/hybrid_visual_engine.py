@@ -170,12 +170,18 @@ def paste_layered_asset(im, scene, t, box):
     if not path or not Path(path).is_file(): return False
     source=Image.open(path).convert("RGB")
     x0,y0,x1,y1=box; w,h=x1-x0,y1-y0
-    background=ImageOps.fit(source,(w,h),method=Image.Resampling.LANCZOS).filter(ImageFilter.GaussianBlur(13))
-    dx=int(math.sin(t*math.tau)*9)
-    im.alpha_composite(background.convert("RGBA"),(x0+dx,y0))
-    foreground=ImageOps.contain(source,(int(w*.82),int(h*.82)),method=Image.Resampling.LANCZOS)
-    px=x0+(w-foreground.width)//2+int(math.sin(t*math.tau)*15)
-    py=y0+(h-foreground.height)//2+int(math.sin(t*math.tau+.7)*7)
+    # Two independent planes with a slow camera push: blurred environment and crisp foreground.
+    zoom_bg=1.035+0.018*math.sin(t*math.pi)
+    bw,bh=int(w*zoom_bg),int(h*zoom_bg)
+    background=ImageOps.fit(source,(bw,bh),method=Image.Resampling.LANCZOS).filter(ImageFilter.GaussianBlur(13))
+    bx=(background.width-w)//2+int(math.sin(t*math.tau)*7)
+    by=(background.height-h)//2+int(math.cos(t*math.tau)*5)
+    background=background.crop((bx,by,bx+w,by+h))
+    im.alpha_composite(background.convert("RGBA"),(x0,y0))
+    zoom_fg=1.0+0.045*t
+    foreground=ImageOps.contain(source,(int(w*.82*zoom_fg),int(h*.82*zoom_fg)),method=Image.Resampling.LANCZOS)
+    px=x0+(w-foreground.width)//2+int(math.sin(t*math.tau)*18)
+    py=y0+(h-foreground.height)//2+int(math.sin(t*math.tau+.7)*9)
     shade=Image.new("RGBA",(foreground.width+26,foreground.height+26),(0,0,0,0))
     sd=ImageDraw.Draw(shade); sd.rounded_rectangle((8,8,foreground.width+18,foreground.height+18),radius=14,fill=(0,0,0,150))
     im.alpha_composite(shade,(px-13,py-13))
@@ -185,7 +191,8 @@ def paste_layered_asset(im, scene, t, box):
 def render_scene(scene: dict, folder: Path, seconds: float) -> Path:
     from PIL import Image, ImageDraw
     folder.mkdir(parents=True, exist_ok=True)
-    total = FPS
+    # Render the full scene duration. The old one-second loop made every 4.5s scene visibly reset.
+    total = max(2, int(math.ceil(seconds * FPS)))
     kind, excerpt = scene["type"], scene["excerpt"]
     for i in range(total):
         t=i/max(1,total-1)
@@ -208,6 +215,22 @@ def render_scene(scene: dict, folder: Path, seconds: float) -> Path:
             d.text((140,340),"LOCALIZACIÓN CON FUENTE CARTOGRÁFICA",font=font(30,True),fill=CYAN)
             if paste_layered_asset(im,scene,t,(175,390,1745,805)):
                 d=ImageDraw.Draw(im)
+                # The geocoded point is supplied by the OSM research step; animate only
+                # that verified point. No route is drawn unless the research data contains one.
+                asset=scene.get("asset") or {}
+                marker=asset.get("marker_xy")
+                map_size=asset.get("map_size") or [768,768]
+                if marker and len(marker)==2:
+                    box=(175,390,1745,805)
+                    mw,mh=box[2]-box[0],box[3]-box[1]
+                    scale=min(mw/map_size[0],mh/map_size[1])
+                    fw,fh=int(map_size[0]*scale),int(map_size[1]*scale)
+                    ox=box[0]+(mw-fw)//2; oy=box[1]+(mh-fh)//2
+                    mx=ox+int(marker[0]*scale); my=oy+int(marker[1]*scale)
+                    pulse=1+0.22*(0.5+0.5*math.sin(t*math.tau))
+                    radius=int(18*pulse)
+                    d.ellipse((mx-radius,my-radius,mx+radius,my+radius),outline=AMBER,width=7)
+                    d.ellipse((mx-7,my-7,mx+7,my+7),fill=RED,outline=INK,width=3)
                 d.text((190,825),attribution[:115] or "Fuente cartográfica registrada en el manifiesto",font=font(18,True),fill=INK)
             else:
                 d.rounded_rectangle((170,420,1745,790),radius=24,fill=(20,37,54,255),outline=RED,width=4)
@@ -397,7 +420,8 @@ def main():
         "scene_count":len(scenes),
         "inserted_visual_seconds":round(sum(s["duration"] for s in scenes),3),
         "visual_mix_note":"El documental original permanece como base. El storyboard semántico selecciona escenas por contexto; mapas y archivos solo se insertan si el paso de investigación encuentra una fuente y licencia registradas. Las escenas sin recurso verificado se marcan como recreación o recurso no encontrado.",
-        "parallax_note":"El efecto 2.5D de esta versión es parallax por capas (fondo difuminado y capa frontal con desplazamiento independiente); no es estimación de profundidad neuronal.",
+        "parallax_note":"Parallax 2.5D por dos planos, zoom lento y desplazamientos independientes; no se presenta como profundidad neuronal.",
+        "continuity_policy":{"recurring_character":"Caspitas explorer","character_design":"chaqueta azul gris, mochila marrón, gorro oscuro, rostro expresivo; proporciones y vestuario constantes","variation":"solo pose, encuadre y movimiento; sin rediseño entre escenas","scene_character_ids":[s.get("character_id") for s in scenes if s.get("type") in ("stickman","reconstruction")]},
         "scenes":scenes
     }
     args.storyboard.write_text(json.dumps(storyboard,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
