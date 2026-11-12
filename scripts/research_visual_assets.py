@@ -65,7 +65,12 @@ def commons_candidate(query,out):
     try: data=get_json("https://commons.wikimedia.org/w/api.php?"+urllib.parse.urlencode(params))
     except Exception: return None
     pages=(data.get("query",{}).get("pages",{}) or {}).values()
+    query_terms=[x for x in re.findall(r"[a-z0-9áéíóúüñ]+",query.casefold())
+                 if len(x)>4 and x not in {"historical","documentary","archive","document","photo","photograph","newspaper","letter","image","scan"}]
     for page in pages:
+      title_text=page.get("title","").casefold()
+      matched=sum(1 for term in query_terms if term in title_text)
+      if query_terms and matched < min(2,len(query_terms)): continue
       info=(page.get("imageinfo") or [{}])[0]; meta=info.get("extmetadata",{})
       license_name=clean_html((meta.get("LicenseShortName") or {}).get("value",""))
       low=license_name.lower()
