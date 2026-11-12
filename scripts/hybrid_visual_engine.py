@@ -15,7 +15,6 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont
 
 W, H, FPS = 1920, 1080, 24
 BG = (13, 20, 31)
@@ -61,6 +60,7 @@ def read_srt(path: Path) -> list[dict]:
     return cues
 
 def font(size: int, bold: bool = False):
+    from PIL import ImageFont
     candidates = [
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
@@ -90,7 +90,8 @@ def text_block(draw, xy, text, size=42, color=INK, max_chars=52, spacing=12):
         y += size + spacing
     return y
 
-def base_frame(index: int, total: int) -> Image.Image:
+def base_frame(index: int, total: int):
+    from PIL import Image, ImageDraw
     # Transparent canvas: the source documentary footage remains visible behind
     # the explanatory card, and the lower subtitle-safe area stays unobstructed.
     im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
@@ -138,6 +139,7 @@ def draw_stickman(d, t: float, x=1450, y=440, scale=1.0, pose="investigate"):
     d.ellipse((hand2[0]-18,hand2[1]-18,hand2[0]+18,hand2[1]+18), fill=(211,164,127))
 
 def render_scene(scene: dict, folder: Path, seconds: float) -> Path:
+    from PIL import Image, ImageDraw
     folder.mkdir(parents=True, exist_ok=True)
     total = FPS  # one-second animated loop; FFmpeg repeats it for the full scene window
     kind, excerpt = scene["type"], scene["excerpt"]
