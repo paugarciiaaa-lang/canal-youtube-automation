@@ -92,6 +92,13 @@ def main():
         location=str(item.get("location_query","")).strip()[:160]
         location_core=location.split(",")[0].strip()
         if location_core and location_core.casefold() not in transcript_norm: location=""
+        document_search=str(item.get("document_search","")).strip()[:180]
+        visual_search=str(item.get("visual_search","")).strip()[:180]
+        def grounded_query(query):
+            terms=[x for x in re.findall(r"[a-z0-9áéíóúüñ]+",query.casefold()) if len(x)>4 and x not in {"historical","documentary","archive","document","photo","photograph","newspaper","letter","image"}]
+            return bool(terms) and any(term in transcript_norm for term in terms)
+        if document_search and not grounded_query(document_search): document_search=""
+        if visual_search and not grounded_query(visual_search): visual_search=""
         confidence=max(0,min(1,float(item.get("confidence",0.5))))
         if length<3.5 or not excerpt or not basis or confidence<0.55: continue
         years=[str(x) for x in item.get("years",[])[:4] if re.fullmatch(r"(18|19|20)\d{2}",str(x))]
@@ -99,8 +106,8 @@ def main():
           "type":typ,"label":str(item.get("label","Contexto"))[:60],"excerpt":excerpt,
           "purpose":str(item.get("purpose",""))[:240],"focus":str(item.get("focus",""))[:32],
           "years":[year for year in years if year in transcript_norm],"location_query":location,
-          "document_search":str(item.get("document_search",""))[:180],
-          "visual_search":str(item.get("visual_search",""))[:180],"confidence":confidence,
+          "document_search":document_search,
+          "visual_search":visual_search,"confidence":confidence,
           "factual_basis":basis,"planner":"openrouter_semantic"})
       except (ValueError,TypeError): continue
     scenes.sort(key=lambda x:x["start"])
