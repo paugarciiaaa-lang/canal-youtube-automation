@@ -470,6 +470,20 @@ jobs:
           echo "video_path=output/Caspitas-hybrid.mp4" >> "$GITHUB_OUTPUT"
           echo "Montaje visual híbrido completado; se conserva el audio original."
 
+      - name: Añadir efectos de sonido originales y validar mezcla
+        id: sound_effects
+        if: steps.local_time.outputs.run_now == 'true' && success()
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/add_sound_effects.py
+          python3 scripts/add_sound_effects.py \
+            --video "${{ steps.hybrid_visuals.outputs.video_path }}" \
+            --storyboard output/storyboard.json \
+            --output output/Caspitas-final-sfx.mp4
+          python3 scripts/validate_video.py output/Caspitas-final-sfx.mp4 --report output/sfx_qa_report.json
+          echo "video_path=output/Caspitas-final-sfx.mp4" >> "$GITHUB_OUTPUT"
+          echo "Efectos de sonido añadidos; voz y duración comprobadas."
+
       - name: Crear título, descripción y miniatura whiteboard
         id: youtube_assets
         if: steps.local_time.outputs.run_now == 'true' && success()
@@ -538,7 +552,7 @@ jobs:
           profile: default
           type: video
           platforms: youtube
-          media: ${{ steps.hybrid_visuals.outputs.video_path }}
+          media: ${{ steps.sound_effects.outputs.video_path }}
           text: ${{ steps.youtube_assets.outputs.title }}
           scheduled-date: ${{ steps.publish_time.outputs.scheduled_date }}
           timezone: Europe/Madrid
@@ -565,6 +579,8 @@ jobs:
           echo "- Voz: es-ES-AlvaroNeural (Edge TTS)" >> "$GITHUB_STEP_SUMMARY"
           echo "- Subtítulos: palabra a palabra, sin animación spring, amarillo con borde y fondo oscuro" >> "$GITHUB_STEP_SUMMARY"
           echo "- Música: desactivada temporalmente; no se usará música aleatoria sin licencia verificada" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Efectos: sonidos originales sintetizados por código, mezcla suave y sin bibliotecas externas; revisar auditivamente." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Informe SFX: output/sfx_report.json y output/sfx_qa_report.json" >> "$GITHUB_STEP_SUMMARY"
           echo "- Fuentes: el guion solicita referencias; deben comprobarse manualmente, no existe verificación automática independiente." >> "$GITHUB_STEP_SUMMARY"
           echo "- Voz Edge TTS: derechos comerciales no confirmados; no considerar monetización verificada." >> "$GITHUB_STEP_SUMMARY"
           echo "- Derechos visuales: revisar origen, licencia y derechos de terceros de cada recurso Pixabay." >> "$GITHUB_STEP_SUMMARY"
