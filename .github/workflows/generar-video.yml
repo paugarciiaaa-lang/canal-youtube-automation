@@ -1,6 +1,9 @@
 name: Generar vídeo del canal
 
 on:
+  push:
+    branches:
+      - caspitas-visual-validation
   schedule:
     - cron: '0 19 * * *'
     - cron: '0 20 * * *'
@@ -12,7 +15,7 @@ on:
         type: string
         default: ''
 concurrency:
-  group: caspitas-generacion
+  group: caspitas-generacion-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -392,7 +395,7 @@ jobs:
           echo "Vídeo validado y preparado: $final"
 
       - name: Guardar tema en el historial para evitar repeticiones
-        if: steps.local_time.outputs.run_now == 'true' && success()
+        if: steps.local_time.outputs.run_now == 'true' && success() && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -491,6 +494,10 @@ jobs:
           VISUAL_LICENSES_VERIFIED: ${{ secrets.VISUAL_LICENSES_VERIFIED }}
         run: |
           allowed=true
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::notice::Ejecución de validación en rama aislada: publicación deshabilitada."
+            allowed=false
+          fi
           if [ "$VOICE_LICENSE_CONFIRMED" != "yes" ]; then
             echo "::warning::Publicación bloqueada: falta confirmar por escrito la licencia comercial de la voz."
             allowed=false
