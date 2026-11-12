@@ -51,7 +51,7 @@ def read_srt(path: Path) -> list[dict]:
         if not timing:
             continue
         a, b = [x.strip().split()[0] for x in timing.split("-->", 1)]
-        text = " ".join(x for x in lines[lines.index(timing)+1:] if not x.isdigit())
+        text = " ".join(lines[lines.index(timing)+1:]).strip()
         if text:
             cues.append({"start": stamp(a), "end": stamp(b), "text": text})
     if not cues:
