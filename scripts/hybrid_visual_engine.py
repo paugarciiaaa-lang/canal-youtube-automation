@@ -382,7 +382,7 @@ def main():
         clips = []
         for scene in scenes:
             folder = tmpdir / f"scene_{scene['index']:03d}"
-            clips.append(render_scene(scene, folder, args.scene_seconds))
+            clips.append(render_scene(scene, folder, float(scene["duration"])))
         cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(source)]
         for clip in clips:
             cmd.extend(["-stream_loop", "-1", "-i", str(clip)])
