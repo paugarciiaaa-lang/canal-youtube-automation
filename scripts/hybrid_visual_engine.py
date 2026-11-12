@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Caspitas 2.0: subtitle-led hybrid documentary visual pass.
 
-Creates a storyboard and inserts short, clearly-labelled 2D explanatory cutaways
-into an existing documentary. The original narration/audio track is preserved.
+Creates a storyboard and overlays short, clearly-labelled 2D explanatory scenes
+onto the existing documentary. Original footage, narration and subtitle timing are preserved.
 No historical facts, maps, documents or statistics are invented.
 """
 from __future__ import annotations
