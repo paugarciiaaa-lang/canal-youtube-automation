@@ -72,6 +72,7 @@ def main():
     with urllib.request.urlopen(req,timeout=150) as r: response=json.loads(r.read())
     parsed=extract_json(response["choices"][0]["message"]["content"])
     allowed={"photo","map","document","reconstruction","stickman","timeline","motion_graphic","parallax"}
+    transcript_norm=re.sub(r"\s+"," "," ".join(c["text"] for c in cues)).casefold()
     scenes=[]
     for item in parsed.get("scenes",[]):
       try:
@@ -84,13 +85,20 @@ def main():
         length=min(length,window["end"]-start)
         excerpt=str(item.get("excerpt","")).strip()[:220]
         basis=str(item.get("factual_basis","")).strip()[:220]
+        basis_norm=re.sub(r"\s+"," ",basis).casefold()
+        if not basis_norm or basis_norm not in transcript_norm: continue
+        excerpt_norm=re.sub(r"\s+"," ",excerpt).casefold()
+        if not excerpt_norm or excerpt_norm not in transcript_norm: excerpt=basis
+        location=str(item.get("location_query","")).strip()[:160]
+        location_core=location.split(",")[0].strip()
+        if location_core and location_core.casefold() not in transcript_norm: location=""
         confidence=max(0,min(1,float(item.get("confidence",0.5))))
         if length<3.5 or not excerpt or not basis or confidence<0.55: continue
         years=[str(x) for x in item.get("years",[])[:4] if re.fullmatch(r"(18|19|20)\d{2}",str(x))]
         scenes.append({"index":len(scenes)+1,"start":round(start,3),"duration":round(length,3),
           "type":typ,"label":str(item.get("label","Contexto"))[:60],"excerpt":excerpt,
           "purpose":str(item.get("purpose",""))[:240],"focus":str(item.get("focus",""))[:32],
-          "years":years,"location_query":str(item.get("location_query",""))[:160],
+          "years":[year for year in years if year in transcript_norm],"location_query":location,
           "document_search":str(item.get("document_search",""))[:180],
           "visual_search":str(item.get("visual_search",""))[:180],"confidence":confidence,
           "factual_basis":basis,"planner":"openrouter_semantic"})
