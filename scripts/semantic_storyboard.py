@@ -99,11 +99,13 @@ def main():
     duration=cues[-1]["end"]
     windows=[]
     cursor=0.0
+    # Menos ventanas y extractos compactos reducen el prompt y el riesgo de truncar el JSON.
+    window_seconds=72
     while cursor<duration:
-        group=[c for c in cues if c["end"]>cursor and c["start"]<cursor+48]
+        group=[c for c in cues if c["end"]>cursor and c["start"]<cursor+window_seconds]
         txt=" ".join(c["text"] for c in group)
-        if txt: windows.append({"start":round(cursor,2),"end":round(min(duration,cursor+48),2),"transcript":txt[:5200]})
-        cursor+=48
+        if txt: windows.append({"start":round(cursor,2),"end":round(min(duration,cursor+window_seconds),2),"transcript":txt[:2400]})
+        cursor+=window_seconds
     benchmark={}
     if a.benchmark and a.benchmark.is_file():
         try:
@@ -116,8 +118,8 @@ def main():
     brief={"topic":a.topic,"windows":windows,"public_competitor_benchmark":benchmark,
       "instructions":"Crea un storyboard documental semántico. Devuelve SOLO JSON con scenes. Cada escena: start,duration,type,label,excerpt,purpose,focus,years,location_query,document_search,visual_search,confidence,factual_basis. Tipos permitidos: photo,map,document,reconstruction,stickman,timeline,motion_graphic,parallax. Una escena útil por ventana como máximo. Usa el benchmark público solo para detectar enfoques de títulos, duración y presentación que merezcan diferenciarse; no copies títulos, miniaturas ni escenas. No deduzcas CTR ni retención. Usa únicamente datos explícitos de la transcripción. No inventes lugares, fechas, personas, citas, documentos, estadísticas, rutas ni fuentes. location_query solo si un lugar real aparece literalmente en el texto. document_search solo como consulta para buscar material; no afirmes que existe ni que es auténtico. factual_basis debe ser una frase textual de la transcripción. excerpt máximo 220 caracteres. El campo start debe ser tiempo absoluto en segundos desde el inicio del vídeo, no relativo a la ventana. Duración 4-6 segundos y dentro de la ventana. Dirección artística Caspitas basada en las referencias del repositorio: ilustración 2D tipo cómic/storyboard, contornos negros definidos, personajes de cabeza redondeada y rasgos expresivos, ropa y accesorios reconocibles (sombrero, chaqueta, mochila cuando la escena lo requiera), fondos completos y cinematográficos, sombras suaves, tonos azules/grises para tensión y acentos cálidos. Nunca dibujes muñecos de palo de líneas básicas. Las secuencias de acción deben conservar el mismo personaje y vestuario entre escenas y variar poses/ángulos. Alterna viñetas/recreaciones ilustradas con fotos, mapas y documentos de archivo; evita Stickman constante. Devuelve JSON estricto."}
     prompt="Eres director documental e investigador visual. Diseña el storyboard solo con la transcripción proporcionada. "+json.dumps(brief,ensure_ascii=False)
-    body=json.dumps({"model":a.model,"temperature":0.15,"max_tokens":6500,
-      "messages":[{"role":"system","content":"Devuelve JSON estricto. No inventes hechos. Si no hay evidencia, deja campos vacíos."},
+    body=json.dumps({"model":a.model,"temperature":0.10,"max_tokens":5000,"response_format":{"type":"json_object"},
+      "messages":[{"role":"system","content":"Devuelve únicamente un objeto JSON válido y compacto con la clave scenes. No uses Markdown ni explicaciones. No inventes hechos."},
                   {"role":"user","content":prompt}]}).encode()
     req=urllib.request.Request("https://openrouter.ai/api/v1/chat/completions",data=body,
       headers={"Authorization":"Bearer "+a.api_key,"Content-Type":"application/json",
