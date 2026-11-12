@@ -12,7 +12,16 @@ class HybridVisualEngineTests(unittest.TestCase):
     def test_reads_numeric_subtitle_text(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "sample.srt"
-            path.write_text("1\\n00:00:01,000 --> 00:00:02,000\\n1981\\n\\n2\\n00:00:02,000 --> 00:00:03,000\\nLa estación\\n", encoding="utf-8")
+            path.write_text("\\n".join([
+                "1",
+                "00:00:01,000 --> 00:00:02,000",
+                "1981",
+                "",
+                "2",
+                "00:00:02,000 --> 00:00:03,000",
+                "La estación",
+                "",
+            ]), encoding="utf-8")
             cues = engine.read_srt(path)
         self.assertEqual(cues[0]["text"], "1981")
         self.assertEqual(cues[1]["text"], "La estación")
