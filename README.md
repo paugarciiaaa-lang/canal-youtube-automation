@@ -66,3 +66,26 @@ La política completa está en [MONETIZATION_POLICY.md](MONETIZATION_POLICY.md).
 **Riesgos pendientes:** el pipeline no verifica de forma independiente cada fuente; no crea todavía un inventario completo de licencias por clip; y la autorización comercial de Edge TTS no está confirmada. Por tanto, no puede certificar que un vídeo sea monetizable. Cada ejecución debe mostrar estos puntos como revisión pendiente.
 
 Referencias oficiales: [políticas de monetización de YouTube](https://support.google.com/youtube/answer/1311392), [contenido adecuado para anunciantes](https://support.google.com/youtube/answer/6162278) y [licencia de Pixabay](https://pixabay.com/service/license-summary/).
+
+
+## Caspitas 2.0 — motor visual híbrido experimental
+
+La rama `caspitas-2.0-hybrid-test` añade una fase experimental después de generar el documental:
+
+1. `scripts/competitor_benchmark.py`: consulta metadatos públicos de hasta ocho vídeos de YouTube sobre el tema (título, canal, visualizaciones, duración y fecha). No obtiene CTR ni retención privada.
+2. `scripts/semantic_storyboard.py`: utiliza OpenRouter para analizar la transcripción por ventanas temporales y proponer escenas por contexto. Exige una frase literal del guion como base factual; no acepta escenas sin esa referencia.
+3. `scripts/research_visual_assets.py`: geocodifica lugares nombrados con Nominatim y construye mapas con mosaicos OpenStreetMap y atribución. Busca imágenes/documentos candidatos en Wikimedia Commons y solo descarga archivos con una licencia identificable de la lista aceptada.
+4. `scripts/hybrid_visual_engine.py`: monta escenas de mapas, documentos, cronologías, motion graphics, Stickman y reconstrucciones ilustradas sobre el vídeo original, preservando la pista de audio y los subtítulos.
+5. Efecto parallax 2.5D experimental: fondo difuminado y capa frontal con movimiento independiente. Es un efecto por capas, no una estimación neuronal de profundidad.
+6. Los mapas sin geocodificación y los documentos sin recurso/licencia aceptados no se sustituyen por material inventado. Se muestran como pendientes o recreaciones claramente identificadas.
+
+### Límites y revisión obligatoria
+
+- La búsqueda de Wikimedia Commons identifica metadatos de licencia, pero no certifica autenticidad histórica ni resuelve derechos de personas, marcas o terceros.
+- La geocodificación confirma que el topónimo existe; no demuestra que un acontecimiento sucediera allí. No se dibujan rutas sin puntos confirmados.
+- El benchmark utiliza datos públicos de búsqueda. No representa una auditoría de retención, CTR ni datos privados de vidIQ.
+- El efecto 2.5D es una aproximación visual por capas; la separación semántica de sujetos y la estimación de profundidad real quedan para una fase posterior.
+- La publicación pública no forma parte de este workflow. El artefacto se genera para revisión y no se programa ni publica en YouTube.
+- La rama experimental no modifica el workflow diario de `main`.
+
+Para ejecutar la prueba: GitHub Actions → **Caspitas 2.0 - prueba híbrida** → rama `caspitas-2.0-hybrid-test` → **Run workflow**.
