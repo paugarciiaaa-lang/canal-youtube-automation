@@ -253,15 +253,9 @@ def render_scene(scene: dict, folder: Path, seconds: float) -> Path:
         d.text((150,222),scene["label"].upper(),font=font(28,True),fill=AMBER)
         attribution=(scene.get("asset") or {}).get("attribution") or (scene.get("asset") or {}).get("license") or ""
         if kind in ("stickman","reconstruction"):
-            d.text((135,340),"RECREACIÓN 2D",font=font(25,True),fill=CYAN)
-            d.text((135,405),"Representación visual,",font=font(34),fill=INK)
-            d.text((135,455),"no imagen de archivo.",font=font(34),fill=INK)
-            d.polygon([(1120,300),(1700,300),(1830,820),(990,820)],fill=(27,43,60,255),outline=(79,101,124,255))
-            d.rectangle((1320,390,1600,820),fill=(15,26,39,255),outline=(117,137,154,255),width=8)
-            d.ellipse((1535,590,1560,615),fill=AMBER)
-            draw_stickman(d,t,x=1110+int(22*math.sin(t*math.tau)),y=365,scale=1,pose="walk" if kind=="reconstruction" else "investigate")
-            if kind=="reconstruction": d.text((1370,340),"SECUENCIA ILUSTRADA",font=font(24,True),fill=RED)
-            text_block(d,(140,650),excerpt,30,INK,48,8)
+            # Both semantic and fallback reconstructions use the contextual scene
+            # artwork. The generic explorer character is no longer a default visual.
+            draw_contextual_reconstruction(im, scene, t)
         elif kind=="map":
             d.text((140,340),"LOCALIZACIÓN CON FUENTE CARTOGRÁFICA",font=font(30,True),fill=CYAN)
             if paste_layered_asset(im,scene,t,(175,390,1745,805)):
