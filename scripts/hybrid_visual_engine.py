@@ -161,8 +161,11 @@ def draw_stickman(d, t: float, x=1450, y=440, scale=1.0, pose="investigate"):
     d.line((pt(-65,125),a1,h1),fill=coat,width=max(4,int(25*s)),joint="curve")
     d.line((pt(65,125),a2,h2),fill=ink,width=max(5,int(34*s)),joint="curve")
     d.line((pt(65,125),a2,h2),fill=coat,width=max(4,int(25*s)),joint="curve")
-    for hx,hy in (h1,h2):
-        d.ellipse((hx[0]-16*s,hy[1]-16*s,hx[0]+16*s,hy[1]+16*s),fill=skin,outline=ink,width=max(2,int(4*s)))
+    for hand_x, hand_y in (h1, h2):
+        d.ellipse(
+            (hand_x-16*s, hand_y-16*s, hand_x+16*s, hand_y+16*s),
+            fill=skin, outline=ink, width=max(2, int(4*s))
+        )
 
 def paste_layered_asset(im, scene, t, box):
     from PIL import Image, ImageOps, ImageFilter, ImageDraw
