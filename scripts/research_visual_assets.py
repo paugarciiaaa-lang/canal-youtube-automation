@@ -60,7 +60,7 @@ def make_map(place,out):
 def clean_html(value):
     return re.sub(r"<[^>]+>","",value or "").strip()
 
-def commons_candidate(query,out):
+def commons_candidate(query,out,used_titles=None):
     params={"action":"query","format":"json","generator":"search","gsrsearch":query,"gsrnamespace":6,
             "gsrlimit":8,"prop":"imageinfo","iiprop":"url|extmetadata","iiurlwidth":1400}
     try: data=get_json("https://commons.wikimedia.org/w/api.php?"+urllib.parse.urlencode(params))
@@ -70,6 +70,7 @@ def commons_candidate(query,out):
                  if len(x)>4 and x not in {"historical","documentary","archive","document","photo","photograph","newspaper","letter","image","scan"}]
     for page in pages:
       title_text=page.get("title","").casefold()
+      if used_titles is not None and page.get("title","") in used_titles: continue
       matched=sum(1 for term in query_terms if term in title_text)
       if query_terms and matched < min(2,len(query_terms)): continue
       info=(page.get("imageinfo") or [{}])[0]; meta=info.get("extmetadata",{})
@@ -99,7 +100,7 @@ def main():
     p.add_argument("--storyboard",required=True,type=Path)
     p.add_argument("--output-dir",required=True,type=Path)
     a=p.parse_args(); data=json.loads(a.storyboard.read_text(encoding="utf-8"))
-    records=[]; map_count=0; image_count=0
+    records=[]; map_count=0; image_count=0; used_commons_titles=set()
     for scene in data.get("scenes",[]):
       asset=None
       if scene.get("type")=="map" and scene.get("location_query"):
@@ -118,11 +119,13 @@ def main():
           else: asset={"status":"geocoding_no_match","query":scene["location_query"]}
         except Exception as exc: asset={"status":"map_unavailable","reason":type(exc).__name__}
       elif scene.get("type") in ("document","photo","parallax") and scene.get("document_search"):
-        asset=commons_candidate(scene["document_search"],a.output_dir/f"commons_{scene['index']:02d}.jpg")
-        if asset: image_count+=1
+        asset=commons_candidate(scene["document_search"],a.output_dir/f"commons_{scene['index']:02d}.jpg",used_commons_titles)
+        if asset:
+          image_count+=1
+          if asset.get("title"): used_commons_titles.add(asset["title"])
         else: asset={"status":"no_accepted_commons_result","query":scene["document_search"]}
       elif scene.get("type")=="photo" and scene.get("visual_search"):
-        asset=commons_candidate(scene["visual_search"],a.output_dir/f"commons_{scene['index']:02d}.jpg")
+        asset=commons_candidate(scene["visual_search"],a.output_dir/f"commons_{scene['index']:02d}.jpg",used_commons_titles)
         if asset: image_count+=1
         else: asset={"status":"no_accepted_commons_result","query":scene["visual_search"]}
       if asset:
