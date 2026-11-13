@@ -493,6 +493,22 @@ jobs:
           echo "video_path=output/Caspitas-final-sfx.mp4" >> "$GITHUB_OUTPUT"
           echo "Efectos de sonido añadidos; voz y duración comprobadas."
 
+      - name: Renderizar subtítulos por frases con resaltado de palabra activa
+        id: karaoke_subtitles
+        if: steps.local_time.outputs.run_now == 'true' && success()
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/phrase_karaoke_subtitles.py
+          python3 scripts/phrase_karaoke_subtitles.py \
+            --video output/Caspitas-final-sfx.mp4 \
+            --srt output/subtitles.srt \
+            --ass output/subtitles_karaoke.ass \
+            --output output/Caspitas-final-karaoke.mp4 \
+            --report output/subtitles_karaoke_report.json
+          python3 scripts/validate_video.py output/Caspitas-final-karaoke.mp4 --report output/karaoke_qa_report.json
+          echo "video_path=output/Caspitas-final-karaoke.mp4" >> "$GITHUB_OUTPUT"
+          echo "Subtítulos por frases con resaltado karaoke renderizados y validados."
+
       - name: Crear título, descripción y miniatura whiteboard
         id: youtube_assets
         if: steps.local_time.outputs.run_now == 'true' && success()
@@ -561,7 +577,7 @@ jobs:
           profile: default
           type: video
           platforms: youtube
-          media: ${{ steps.sound_effects.outputs.video_path }}
+          media: ${{ steps.karaoke_subtitles.outputs.video_path }}
           text: ${{ steps.youtube_assets.outputs.title }}
           scheduled-date: ${{ steps.publish_time.outputs.scheduled_date }}
           timezone: Europe/Madrid
@@ -584,9 +600,9 @@ jobs:
           echo "- Control técnico: $(python3 -c 'import json; print(json.load(open("output/qa_report.json"))["status"])')" >> "$GITHUB_STEP_SUMMARY"
           echo "- Sincronización A/V: $(python3 -c 'import json; print(json.load(open("output/qa_report.json"))["audio_video_drift_seconds"])') segundos de diferencia" >> "$GITHUB_STEP_SUMMARY"
           echo "- Subtítulos: $(python3 -c 'import json; print(json.load(open("output/qa_report.json"))["subtitle_cues"])') cues revisados; comprobar también la escucha final" >> "$GITHUB_STEP_SUMMARY"
-          echo "- FFmpeg: preset veryfast y CRF 23; subtítulo palabra a palabra conservado sin animación spring costosa" >> "$GITHUB_STEP_SUMMARY"
+          echo "- FFmpeg: preset veryfast y CRF 23; subtítulos ASS por frases con resaltado de palabra activa" >> "$GITHUB_STEP_SUMMARY"
           echo "- Voz: es-ES-AlvaroNeural (Edge TTS)" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Subtítulos: palabra a palabra, sin animación spring, amarillo con borde y fondo oscuro" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Subtítulos: frases cortas con resaltado karaoke sincronizado por palabra; fondo oscuro y borde legible" >> "$GITHUB_STEP_SUMMARY"
           echo "- Música: desactivada temporalmente; no se usará música aleatoria sin licencia verificada" >> "$GITHUB_STEP_SUMMARY"
           echo "- Efectos: sonidos originales sintetizados por código, mezcla suave y sin bibliotecas externas; revisar auditivamente." >> "$GITHUB_STEP_SUMMARY"
           echo "- Mapas: marcador geocodificado animado solo cuando el lugar y la fuente OSM se han podido verificar; sin rutas inventadas." >> "$GITHUB_STEP_SUMMARY"
