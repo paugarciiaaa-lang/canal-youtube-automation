@@ -98,7 +98,7 @@ def main() -> None:
         labels = "".join(f"[s{i}]" for i in range(1, len(cues)+1))
         filters.append(
             f"[0:a]aresample={RATE},volume=1.0[voice];"
-            f"{labels}[voice]amix=inputs={len(cues)+1}:duration=first:"
+            f"[voice]{labels}amix=inputs={len(cues)+1}:duration=first:"
             f"dropout_transition=0:normalize=0,alimiter=limit=0.96[aout]"
         )
         cmd.extend([
