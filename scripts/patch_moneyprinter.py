@@ -113,10 +113,10 @@ new_function = '''def generate_script(task_id, params):
                 + f"El guion actual tiene {current_count} palabras y faltan "
                 + f"aproximadamente {needed} para superar el mínimo de {minimum_words}. "
                 + f"Escribe SOLO una continuación nueva de unas {requested} palabras. "
-                + "Continúa exactamente desde el último párrafo. No repitas la "
-                + "introducción, hechos ya explicados ni conclusiones. Añade contexto, "
-                + "pruebas, matices o consecuencias que todavía falten. No inventes "
-                + "datos. Devuelve únicamente el texto nuevo, sin encabezados técnicos.\\n\\n"
+                + "Continúa desde el último párrafo con enfoque explicativo: desarrolla qué "
+                + "ocurrió, cómo se sabe, qué significan las pruebas y cómo avanzó la investigación. "
+                + "No repitas hechos ni uses suspense vacío. Añade contexto relevante sin inventar "
+                + "datos. Devuelve solo texto nuevo, sin encabezados técnicos.\\n\\n"
                 + "GUION YA GENERADO (úsalo como contexto; no lo copies):\\n"
                 + best_script
             )
