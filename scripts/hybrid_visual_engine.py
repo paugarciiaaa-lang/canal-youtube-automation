@@ -92,19 +92,67 @@ def text_block(draw, xy, text, size=42, color=INK, max_chars=52, spacing=12):
 
 def base_frame(index: int, total: int):
     from PIL import Image, ImageDraw
-    # Transparent canvas: the source documentary footage remains visible behind
-    # the explanatory card, and the lower subtitle-safe area stays unobstructed.
-    im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    # Full-frame cinematic treatment replaces the oversized presentation card.
+    # The source stock footage is darkened so irrelevant details do not dominate.
+    im = Image.new("RGBA", (W, H), (8, 13, 22, 226))
     d = ImageDraw.Draw(im)
-    d.rounded_rectangle((58, 58, W-58, 900), radius=34,
-                        fill=(11, 18, 29, 185), outline=(82, 103, 126, 245), width=4)
-    d.rectangle((58, 58, 78, 900), fill=AMBER)
-    d.text((112, 90), "CASPITAS  /  DOCUMENTAL", font=font(24, True), fill=MUTED)
-    d.line((112, 138, W-112, 138), fill=(72, 91, 112), width=2)
-    # Animated accent sweep inside the card.
-    x = int(140 + (W-280) * ((index / max(1,total-1)) * .65 + .15))
-    d.ellipse((x-180, 170, x+180, 530), fill=(18, 34, 48, 205))
+    d.rectangle((0, 0, W, 12), fill=AMBER)
+    d.text((92, 54), "CASPITAS  /  DOCUMENTAL", font=font(22, True), fill=(190, 202, 214, 235))
+    d.line((92, 96, W-92, 96), fill=(82, 103, 126, 180), width=2)
+    # Subtle moving light, not a giant decorative halo.
+    x = int(180 + (W-360) * (index / max(1, total-1)))
+    d.line((x, 112, x+120, 112), fill=(74, 190, 205, 150), width=3)
     return im
+
+def draw_contextual_reconstruction(im, scene: dict, t: float):
+    """Draw a clearly-labelled, topic-aware 2D scene when no licensed archive asset exists."""
+    from PIL import Image, ImageDraw
+    d = ImageDraw.Draw(im, "RGBA")
+    text = (scene.get("excerpt") or "").casefold()
+    # Sodder / house-fire stories: a period house, night sky and animated firelight.
+    if any(k in text for k in ("incendio", "bomberos", "fuego", "casa", "familia")):
+        d.rectangle((0, 560, W, H), fill=(13, 20, 31, 255))
+        for i in range(34):
+            sx = (i * 173) % W
+            sy = 120 + ((i * 97) % 360)
+            d.ellipse((sx, sy, sx+3, sy+3), fill=(210, 222, 235, 150))
+        # 1940s house silhouette and roof.
+        d.polygon([(760, 520), (1110, 290), (1470, 520)], fill=(35, 47, 61, 255), outline=(150, 164, 178, 255))
+        d.rectangle((820, 515, 1410, 900), fill=(29, 40, 54, 255), outline=(150, 164, 178, 255), width=5)
+        for wx in (900, 1110, 1280):
+            d.rectangle((wx, 590, wx+105, 730), fill=(18, 27, 39, 255), outline=(115, 130, 145, 255), width=5)
+        d.rectangle((1050, 700, 1170, 900), fill=(12, 19, 29, 255), outline=(115, 130, 145, 255), width=4)
+        # Flickering fire silhouettes; motion changes subtly frame to frame.
+        flicker = 1 + .13 * math.sin(t * math.tau * 3)
+        for fx, base in ((840, 810), (970, 790), (1240, 820), (1370, 790)):
+            h = int((105 + 22 * math.sin(t*math.tau*2 + fx)) * flicker)
+            d.polygon([(fx-42,base),(fx-22,base-h//2),(fx-8,base-h),(fx+9,base-h//2),(fx+35,base)],
+                      fill=(235, 104, 43, 205))
+            d.ellipse((fx-20,base-h//2,fx+18,base), fill=(255, 190, 76, 190))
+        d.text((120, 180), "RECREACIÓN HISTÓRICA", font=font(26, True), fill=CYAN)
+        d.text((120, 225), "Casa familiar · noche de 1945", font=font(36, True), fill=INK)
+    # Island / treasure-hunt stories: coastline, water and excavation site.
+    elif any(k in text for k in ("isla", "tesoro", "excav", "pozo", "mina")):
+        d.rectangle((0, 570, W, H), fill=(13, 35, 52, 255))
+        for j in range(7):
+            yy = 625 + j*48 + int(5*math.sin(t*math.tau+j))
+            d.line((0, yy, W, yy+int(12*math.sin(t*math.tau+j))), fill=(66, 145, 165, 150), width=4)
+        d.polygon([(420, 640),(650,480),(900,420),(1180,485),(1490,640),(1600,720),(300,720)],
+                  fill=(43, 65, 57, 255), outline=(139, 156, 130, 255))
+        d.rectangle((890, 560, 1060, 900), fill=(22, 28, 31, 255), outline=(174, 151, 108, 255), width=7)
+        d.line((860, 560, 1090, 560), fill=(174, 151, 108, 255), width=13)
+        d.text((120, 180), "RECREACIÓN ILUSTRADA", font=font(26, True), fill=CYAN)
+        d.text((120, 225), "Costa e investigación del subsuelo", font=font(36, True), fill=INK)
+    else:
+        d.rectangle((0, 570, W, H), fill=(14, 23, 35, 255))
+        d.ellipse((1160, 230, 1510, 580), fill=(31, 48, 66, 255), outline=(92, 116, 138, 255), width=5)
+        d.text((120, 180), "RECREACIÓN ILUSTRADA", font=font(26, True), fill=CYAN)
+        d.text((120, 225), "Escena contextual no fotográfica", font=font(36, True), fill=INK)
+    # Keep the explanatory copy small and below the visual, not in a giant card.
+    excerpt = (scene.get("excerpt") or "").strip()
+    if excerpt:
+        text_block(d, (120, 925), excerpt, 22, INK, 112, 5)
+
 
 def draw_stickman(d, t: float, x=1450, y=440, scale=1.0, pose="investigate"):
     """Draw Caspitas' recurring 2D comic explorer (not a line stickman)."""
@@ -270,13 +318,9 @@ def render_scene(scene: dict, folder: Path, seconds: float) -> Path:
                 d.text((195,830),("FUENTE: "+attribution)[:115],font=font(17,True),fill=INK)
                 d.text((195,860),"Parallax 2.5D aproximado: fondo difuminado + capa frontal independiente.",font=font(18),fill=AMBER)
             else:
-                # A missing archive candidate must not leave an error screen in the documentary.
-                # Use a clearly-labelled illustrated reconstruction instead of pretending it is a photo.
-                d.rounded_rectangle((220,430,1660,805),radius=28,fill=(24,40,57,245),outline=(92,116,138,255),width=4)
-                d.text((280,475),"IMAGEN DE ARCHIVO NO DISPONIBLE",font=font(27,True),fill=AMBER)
-                text_block(d,(285,550),excerpt,34,INK,52,12)
-                draw_stickman(d,t,x=1450,y=500,scale=0.72,pose="investigate")
-                d.text((285,755),"RECREACIÓN ILUSTRADA · NO ES UNA FOTOGRAFÍA",font=font(19,True),fill=CYAN)
+                # Replace missing-archive warning cards and generic stick figures with
+                # a topic-aware illustrated reconstruction; never imply it is archival.
+                draw_contextual_reconstruction(im, scene, t)
         else:
             d.text((145,350),"DATO / IDEA DE LA NARRACIÓN",font=font(30,True),fill=CYAN)
             focus=scene.get("focus","DETALLE")[:18] or "DETALLE"
@@ -303,7 +347,8 @@ def classify(text: str, index: int) -> tuple[str,str]:
         return "reconstruction", "Reconstrucción"
     if any(k in low for k in ("millones","por ciento","kilómetros","horas","días","metros","número","cifra")):
         return "motion", "Dato destacado"
-    return ("stickman" if index % 2 == 0 else "motion"), ("Investigación" if index % 2 == 0 else "Detalle clave")
+    # Avoid defaulting to the same generic character overlay in every other scene.
+    return "motion", "Detalle clave"
 
 def plan(cues: list[dict], duration: float, interval: float, scene_seconds: float) -> list[dict]:
     scenes, cursor, index = [], max(18.0, interval*.65), 0
