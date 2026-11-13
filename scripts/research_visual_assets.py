@@ -126,7 +126,9 @@ def main():
         else: asset={"status":"no_accepted_commons_result","query":scene["document_search"]}
       elif scene.get("type")=="photo" and scene.get("visual_search"):
         asset=commons_candidate(scene["visual_search"],a.output_dir/f"commons_{scene['index']:02d}.jpg",used_commons_titles)
-        if asset: image_count+=1
+        if asset:
+          image_count+=1
+          if asset.get("title"): used_commons_titles.add(asset["title"])
         else: asset={"status":"no_accepted_commons_result","query":scene["visual_search"]}
       if asset:
         scene["asset"]=asset
