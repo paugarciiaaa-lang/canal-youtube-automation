@@ -64,14 +64,14 @@ def transcript_grounded_scenes(cues, windows, existing, topic):
         if len(excerpt)<28:
             selected=[x for x in cues if window["start"] <= x["start"] < min(window["end"],anchor["start"]+20)]
             excerpt=" ".join(x["text"] for x in selected).strip()
-        excerpt=re.sub(r"\\s+"," ",excerpt).strip()[:220]
+        excerpt=re.sub(r"\s+"," ",excerpt).strip()[:220]
         if len(excerpt)<28:
             continue
         start=round(anchor["start"],3)
         if any(start < end+12 and start+5.0 > begin-12 for begin,end in occupied):
             continue
         low=excerpt.casefold()
-        years=re.findall(r"\\b(?:18|19|20)\\d{2}\\b",excerpt)[:4]
+        years=re.findall(r"\b(?:18|19|20)\d{2}\b",excerpt)[:4]
         document_search=""
         visual_search=""
         if years:
