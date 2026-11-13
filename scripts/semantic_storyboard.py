@@ -40,49 +40,76 @@ def normalize_evidence(value):
     value="".join(ch for ch in value if not unicodedata.combining(ch))
     return re.sub(r"[^a-z0-9]+"," ",value).strip()
 
-def transcript_grounded_scenes(cues, windows, existing):
-    """Auditable fallback: scenes are built only from literal subtitle passages."""
+def transcript_grounded_scenes(cues, windows, existing, topic):
+    """Build a richer, auditable fallback using only literal subtitle evidence."""
     fallback=[]
     occupied=[(x["start"],x["start"]+x["duration"]) for x in existing]
-    for window in windows:
+    evidence_terms=("documento","carta","expediente","informe","prueba","huella",
+                    "fotografia","fotografía","evidencia","registro","archivo",
+                    "nota","mensaje","diario","grabacion","grabación")
+    movement_terms=("llego","llegó","entro","entró","salio","salió","camino","caminó",
+                    "viajo","viajó","encontro","encontró","desaparecio","desapareció",
+                    "cruzo","cruzó","huyo","huyó","corrio","corrió","condujo")
+    signal_terms=("radio","senal","señal","transmision","transmisión","mensaje",
+                  "llamada","frecuencia","telefono","teléfono")
+    for window_index,window in enumerate(windows):
         candidates=[x for x in cues if window["start"] <= x["start"] < window["end"]]
         if not candidates:
             continue
         midpoint=(window["start"]+window["end"])/2
         anchor=min(candidates,key=lambda x:abs(x["start"]-midpoint))
         start_index=cues.index(anchor)
-        selected=[x for x in cues[start_index:] if x["start"] < min(window["end"],anchor["start"]+12)]
+        selected=[x for x in cues[start_index:] if x["start"] < min(window["end"],anchor["start"]+14)]
         excerpt=" ".join(x["text"] for x in selected).strip()
         if len(excerpt)<28:
-            selected=[x for x in cues if window["start"] <= x["start"] < min(window["end"],anchor["start"]+18)]
+            selected=[x for x in cues if window["start"] <= x["start"] < min(window["end"],anchor["start"]+20)]
             excerpt=" ".join(x["text"] for x in selected).strip()
-        excerpt=re.sub(r"\s+"," ",excerpt).strip()[:220]
+        excerpt=re.sub(r"\\s+"," ",excerpt).strip()[:220]
         if len(excerpt)<28:
             continue
         start=round(anchor["start"],3)
-        if any(start < end+12 and start+4.5 > begin-12 for begin,end in occupied):
+        if any(start < end+12 and start+5.0 > begin-12 for begin,end in occupied):
             continue
-        if re.search(r"\b(18|19|20)\d{2}\b",excerpt):
+        low=excerpt.casefold()
+        years=re.findall(r"\\b(?:18|19|20)\\d{2}\\b",excerpt)[:4]
+        document_search=""
+        visual_search=""
+        if years:
             kind="timeline"
-            years=re.findall(r"\b(?:18|19|20)\d{2}\b",excerpt)[:4]
-            label="Fecha mencionada en el relato"
-        elif re.search(r"\b(llego|llegó|entro|entró|salio|salió|camino|caminó|viajo|viajó|encontro|encontró|desaparecio|desapareció|cruzo|cruzó|huyo|huyó)\b",excerpt.casefold()):
-            kind="stickman"
-            years=[]
-            label="Recreación ilustrativa"
+            label="Cronología del caso"
+            focus=years[0]
+        elif any(term in low for term in evidence_terms):
+            kind="document"
+            label="Pista o documento mencionado"
+            focus="PRUEBA"
+            document_search=topic.strip()
+        elif any(term in low for term in movement_terms):
+            kind="reconstruction"
+            label="Reconstrucción ilustrada"
+            focus="RECREACIÓN"
+        elif topic.strip() and window_index % 3 == 0:
+            kind="photo"
+            label="Imagen de contexto"
+            focus="CONTEXTO"
+            visual_search=topic.strip()
+        elif any(term in low for term in signal_terms):
+            kind="motion_graphic"
+            label="Señal o comunicación"
+            focus="SEÑAL"
         else:
             kind="motion_graphic"
-            years=[]
-            label="Idea del fragmento narrado"
+            label="Idea clave del relato"
+            focus="CLAVE"
         fallback.append({
-            "index":0,"start":start,"duration":4.5,"type":kind,
+            "index":0,"start":start,"duration":5.0,"type":kind,
             "label":label,"excerpt":excerpt,
-            "purpose":"Apoyo visual construido a partir del subtítulo literal; no añade hechos externos.",
-            "focus":"","years":years,"location_query":"",
-            "document_search":"","visual_search":"","confidence":0.60,
-            "factual_basis":excerpt,"planner":"transcript_grounded_fallback"
+            "purpose":"Apoyo visual guiado por subtítulos literales; no añade hechos externos.",
+            "focus":focus,"years":years,"location_query":"",
+            "document_search":document_search,"visual_search":visual_search,
+            "confidence":0.65,"factual_basis":excerpt,
+            "planner":"transcript_grounded_fallback"
         })
-        occupied.append((start,start+4.5))
+        occupied.append((start,start+5.0))
     return fallback
 
 def main():
@@ -220,7 +247,7 @@ def main():
     fallback_used=False
     if len(chosen)<3:
         fallback_used=True
-        supplemental=transcript_grounded_scenes(cues,windows,chosen)
+        supplemental=transcript_grounded_scenes(cues,windows,chosen,a.topic)
         chosen.extend(supplemental)
         chosen.sort(key=lambda x:x["start"])
         # Reindex and keep a conservative, non-overlapping visual cadence.
