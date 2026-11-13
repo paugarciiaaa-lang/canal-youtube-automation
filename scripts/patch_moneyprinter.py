@@ -31,50 +31,107 @@ if start < 0 or end < 0:
 new_function = '''def generate_script(task_id, params):
     logger.info("\\n\\n## generating and validating long-form video script")
     minimum_words = 2200
-    target_words = "2.300-2.500 palabras"
     video_script = str(params.video_script or "").strip()
 
-    if video_script:
-        word_count = len(video_script.split())
-        logger.info(f"provided script word count: {word_count}")
-    else:
-        video_script = ""
-        for attempt in range(1, 4):
-            retry_note = (
-                f"\\n\\nREQUISITO DE DURACIÓN OBLIGATORIO: redacta entre {target_words}. "
-                "No resumas ni acortes. Desarrolla cronología, contexto, pruebas, "
-                "testimonios atribuibles, hipótesis contrastadas y consecuencias. "
-                "Antes de terminar, comprueba que el texto supera 2.300 palabras. "
-                f"Esta es la generación {attempt} de 3."
-            )
-            prompt = str(params.video_script_prompt or "") + retry_note
-            video_script = llm.generate_script(
-                video_subject=params.video_subject,
-                language=params.video_language,
-                paragraph_number=max(1, min(10, int(params.paragraph_number or 10))),
-                video_script_prompt=prompt,
-                custom_system_prompt=params.custom_system_prompt,
-            )
-            video_script = str(video_script or "").strip()
-            word_count = len(video_script.split())
-            logger.info(
-                f"script length validation: attempt={attempt}/3, "
-                f"words={word_count}, minimum={minimum_words}"
-            )
-            if word_count >= minimum_words:
-                break
-            logger.warning(
-                f"script too short ({word_count} words); regenerating BEFORE "
-                "voice, stock downloads and video rendering."
-            )
-            video_script = ""
+    def count_words(text):
+        return len(str(text or "").split())
 
-    word_count = len(video_script.split())
+    def append_continuation(original, continuation):
+        """Append only genuinely new words, removing a repeated opening overlap."""
+        original_words = original.split()
+        extra_words = str(continuation or "").strip().split()
+        if not extra_words:
+            return original
+        def key(word):
+            return re.sub(r"[^a-z0-9áéíóúüñ]", "", word.casefold())
+        max_overlap = min(100, len(original_words), len(extra_words))
+        overlap = 0
+        for size in range(max_overlap, 7, -1):
+            left = [key(x) for x in original_words[-size:]]
+            right = [key(x) for x in extra_words[:size]]
+            if left == right:
+                overlap = size
+                break
+        if overlap:
+            extra_words = extra_words[overlap:]
+        if not extra_words:
+            return original
+        return (original.rstrip() + "\\n\\n" + " ".join(extra_words)).strip()
+
+    if not video_script:
+        initial_prompt = str(params.video_script_prompt or "")
+        video_script = str(llm.generate_script(
+            video_subject=params.video_subject,
+            language=params.video_language,
+            paragraph_number=max(1, min(10, int(params.paragraph_number or 10))),
+            video_script_prompt=initial_prompt,
+            custom_system_prompt=params.custom_system_prompt,
+        ) or "").strip()
+
+    word_count = count_words(video_script)
+    logger.info(
+        f"initial script length: words={word_count}, minimum={minimum_words}"
+    )
+
+    # Preserve the best draft and extend it instead of discarding it and
+    # asking the model to regenerate the whole documentary from scratch.
+    for attempt in range(1, 4):
+        word_count = count_words(video_script)
+        if word_count >= minimum_words:
+            break
+
+        missing = minimum_words - word_count
+        requested_words = min(650, max(300, missing + 180))
+        tail = " ".join(video_script.split()[-115:])
+        continuation_prompt = (
+            "CONTINUACIÓN DE UN GUION DOCUMENTAL YA ESCRITO. "
+            f"El guion actual tiene {word_count} palabras y necesita al menos "
+            f"{minimum_words}. Escribe aproximadamente {requested_words} palabras NUEVAS "
+            "para continuar desde el final indicado. No repitas ni reescribas el guion. "
+            "No incluyas títulos, listas de instrucciones ni comentarios sobre el proceso. "
+            "Mantén español de España, tono documental y continuidad narrativa. "
+            "No inventes nombres, fechas, citas, pruebas, fuentes ni hechos nuevos: "
+            "amplía únicamente el contexto y las implicaciones de lo ya expuesto, "
+            "distinguiendo hechos de hipótesis. Termina de forma natural. "
+            "Último fragmento del guion (solo contexto; no lo repitas): "
+            + tail
+        )
+        logger.info(
+            f"script continuation: attempt={attempt}/3, "
+            f"current_words={word_count}, target_addition={requested_words}"
+        )
+        continuation = llm.generate_script(
+            video_subject=params.video_subject,
+            language=params.video_language,
+            paragraph_number=3,
+            video_script_prompt=continuation_prompt,
+            custom_system_prompt=params.custom_system_prompt,
+        )
+        continuation = str(continuation or "").strip()
+        added_words = count_words(continuation)
+        if added_words:
+            updated = append_continuation(video_script, continuation)
+            new_count = count_words(updated)
+            if new_count > word_count:
+                video_script = updated
+                logger.info(
+                    f"continuation accepted: added={new_count-word_count}, "
+                    f"total_words={new_count}"
+                )
+            else:
+                logger.warning(
+                    f"continuation produced no new words: returned={added_words}"
+                )
+        else:
+            logger.warning("continuation returned empty text; preserving current draft")
+
+    word_count = count_words(video_script)
     if not video_script or word_count < minimum_words:
         message = (
-            f"guion demasiado corto: {word_count} palabras; mínimo "
-            f"{minimum_words}. Se detiene antes de generar audio, descargar "
-            "materiales o renderizar para no desperdiciar tiempo."
+            f"guion insuficiente tras conservar y ampliar el mejor borrador: "
+            f"{word_count} palabras; mínimo {minimum_words}. "
+            "No se ha descartado el texto generado. Se detiene antes de voz, "
+            "descarga de materiales y renderizado."
         )
         logger.error(message)
         _mark_task_failed(task_id, "script", message)
