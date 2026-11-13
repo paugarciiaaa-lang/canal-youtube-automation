@@ -116,13 +116,14 @@ jobs:
               print(f"Tema seleccionado: {subject}")
 
           prompt = """
-          GUION DOCUMENTAL: 2.300-2.500 palabras en español de España (14-17 minutos); nunca menos de 2.200. Desarrolla con detalle, sin resumir ni repetir.
-          ESTRUCTURA: gancho; contexto y protagonistas; cronología; pruebas, documentos y testimonios; hipótesis contrastadas; contradicciones; hechos confirmados y lagunas; consecuencias, estado actual y conclusión razonada.
-          RIGOR: no inventes hechos, fechas, nombres, citas, documentos, fuentes ni enlaces. Prioriza fuentes primarias, archivos oficiales y estudios académicos. Atribuye cada hipótesis y separa hechos, teorías, rumores y dudas. Marca como pendiente lo no verificable.
-          VALOR: análisis original, contexto específico y educativo. Sugiere mapas, cronologías y recursos visuales pertinentes; evita repetir clips.
-          VISUAL CASPITAS: ilustraciones 2D de cómic/storyboard con contornos limpios, personajes expresivos (nunca stickman), fondos completos, profundidad, sombras e iluminación cinematográfica. En secuencias, conserva identidad, ropa, proporciones y accesorios; cambia poses y planos. Usa tonos fríos y acentos cálidos. Alterna ilustración con fotos, vídeo documental, mapas y documentos reales; cada recurso debe corresponder a la época y al hecho narrado. Sin marcas de agua ni texto ilegible.
-          ESTILO: serio, inmersivo y natural. Sin saludos ni instrucciones al editor. Trata tragedias con respeto y sin morbo. No presentes conspiraciones como hechos.
-          DERECHOS: no presupongas licencias comerciales de voz, música o imágenes; evita música sin licencia documentada.
+GUION DOCUMENTAL: 2.300-2.500 palabras en español de España (14-17 minutos); mínimo 2.200. Prioridad: EXPLICAR EL CASO con claridad y profundidad, no acumular misterio.
+NARRACIÓN: documental de investigación, natural, preciso y didáctico. Cuenta los hechos de forma comprensible. Explica quién es cada persona, qué hizo, cuándo, dónde, cómo se sabe y por qué importa. Aclara el contexto y los términos técnicos, policiales, científicos o legales.
+ESTRUCTURA: hecho central y pregunta del caso; contexto histórico, geográfico y personal; protagonistas y relaciones; cronología paso a paso; reconstrucción de lo ocurrido y descubrimiento de las pruebas; investigación, métodos, hallazgos, documentos y testimonios; hipótesis con pruebas a favor y en contra; contradicciones y preguntas abiertas; consecuencias, estado actual y conclusión.
+DESARROLLO: no enumeres datos sin explicar su significado. Conecta causas, decisiones y consecuencias. Explica qué demuestra cada prueba y sus límites. Usa transiciones claras. Evita repetir el gancho, preguntas retóricas excesivas, cliffhangers, dramatismo vacío y redundancias.
+RIGOR: no inventes hechos, fechas, nombres, citas, documentos, fuentes ni enlaces. Prioriza fuentes primarias, archivos oficiales y estudios académicos. Atribuye testimonios e hipótesis; separa hechos, inferencias, teorías, rumores y dudas. Di cuándo algo no es verificable. No presentes conspiraciones como hechos.
+VALOR: aporta contexto para que quien desconoce el caso lo entienda de principio a fin. Sugiere mapas, cronologías y documentos pertinentes.
+VISUAL: cómic/storyboard 2D, personajes expresivos (no stickman), fondos completos, profundidad e iluminación cinematográfica. Mantén identidad y ropa entre escenas. Alterna ilustraciones, fotos, vídeo documental, mapas y documentos reales de la época.
+TRATO Y DERECHOS: tono serio y respetuoso, sin morbo, saludos ni instrucciones al editor. No presupongas licencias comerciales de voz, música o imágenes.
           """
 
           Path("topic_subject.txt").write_text(subject, encoding="utf-8")
