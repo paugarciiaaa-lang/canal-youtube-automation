@@ -15,7 +15,7 @@ on:
         type: string
         default: ''
 concurrency:
-  group: caspitas-generacion-${{ github.ref }}
+  group: caspitas-generacion-${{ github.ref }}-recovery
   cancel-in-progress: true
 
 permissions:
