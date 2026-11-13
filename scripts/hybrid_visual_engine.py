@@ -270,8 +270,13 @@ def render_scene(scene: dict, folder: Path, seconds: float) -> Path:
                 d.text((195,830),("FUENTE: "+attribution)[:115],font=font(17,True),fill=INK)
                 d.text((195,860),"Parallax 2.5D aproximado: fondo difuminado + capa frontal independiente.",font=font(18),fill=AMBER)
             else:
-                d.text((220,500),"RECURSO VISUAL NO ENCONTRADO",font=font(40,True),fill=RED)
-                text_block(d,(220,600),excerpt,32,INK,70,10)
+                # A missing archive candidate must not leave an error screen in the documentary.
+                # Use a clearly-labelled illustrated reconstruction instead of pretending it is a photo.
+                d.rounded_rectangle((220,430,1660,805),radius=28,fill=(24,40,57,245),outline=(92,116,138,255),width=4)
+                d.text((280,475),"IMAGEN DE ARCHIVO NO DISPONIBLE",font=font(27,True),fill=AMBER)
+                text_block(d,(285,550),excerpt,34,INK,52,12)
+                draw_stickman(d,t,x=1450,y=500,scale=0.72,pose="investigate")
+                d.text((285,755),"RECREACIÓN ILUSTRADA · NO ES UNA FOTOGRAFÍA",font=font(19,True),fill=CYAN)
         else:
             d.text((145,350),"DATO / IDEA DE LA NARRACIÓN",font=font(30,True),fill=CYAN)
             focus=scene.get("focus","DETALLE")[:18] or "DETALLE"
