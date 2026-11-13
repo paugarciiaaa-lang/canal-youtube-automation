@@ -337,7 +337,7 @@ def classify(text: str, index: int) -> tuple[str,str]:
         return "map", "Localización"
     if any(k in low for k in ("documento","carta","expediente","informe","prueba","huella","fotografía","evidencia","registro","archivo")):
         return "evidence", "Pista documental"
-    if any(k in low for k in ("desapare","entró","salió","caminó","llegó","encontró","viajó","huyó","corría","condujo")):
+    if any(k in low for k in ("desapare","entró","salió","caminó","llegó","encontró","viajó","huyó","corría","condujo","incendio","bomberos","fuego","casa","familia")):
         return "reconstruction", "Reconstrucción"
     if any(k in low for k in ("millones","por ciento","kilómetros","horas","días","metros","número","cifra")):
         return "motion", "Dato destacado"
