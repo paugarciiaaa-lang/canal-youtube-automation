@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Semantic storyboard planner for Caspitas 2.0 using the configured OpenRouter key."""
-import argparse, json, os, re, time, urllib.request
+import argparse, json, os, re, time, urllib.error, urllib.request
 from pathlib import Path
 
 def read_srt(path):
@@ -144,11 +144,26 @@ def main():
             if not isinstance(parsed,dict) or not isinstance(parsed.get("scenes"),list):
                 raise ValueError("La respuesta JSON no contiene una lista 'scenes'.")
             break
-        except (ValueError, KeyError, IndexError, json.JSONDecodeError) as exc:
-            last_error=str(exc)
+        except (ValueError, KeyError, IndexError, json.JSONDecodeError,
+                urllib.error.URLError, TimeoutError, OSError) as exc:
+            # HTTPError (incluidos 502/503/429) hereda de URLError.
+            # No permitir que una caída temporal del proveedor aborte el workflow:
+            # tras los reintentos, el storyboard literal de subtítulos es el respaldo seguro.
+            last_error=f"{type(exc).__name__}: {exc}"
             if attempt < 2:
-                wait_seconds=2 ** attempt
-                print(f"Respuesta semántica no utilizable (intento {attempt+1}/3): {last_error}. Reintentando en {wait_seconds}s.")
+                wait_seconds=(5, 15)[attempt]
+                retry_after=None
+                if isinstance(exc, urllib.error.HTTPError):
+                    try:
+                        retry_after=int(exc.headers.get("Retry-After", ""))
+                    except (TypeError, ValueError):
+                        retry_after=None
+                if retry_after is not None:
+                    wait_seconds=max(wait_seconds,min(retry_after,60))
+                print(
+                    f"Respuesta semántica no utilizable (intento {attempt+1}/3): "
+                    f"{last_error}. Reintentando en {wait_seconds}s."
+                )
                 time.sleep(wait_seconds)
     if parsed is None:
         print(
