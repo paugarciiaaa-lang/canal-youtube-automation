@@ -89,7 +89,9 @@ def choose_effect(scene: dict, index: int) -> str | None:
     if kind in ("document", "evidence"):
         return "paper"
     if kind == "timeline":
-        return "camera" if any(x in text for x in ("fotografia", "archivo", "registro")) else "tick"
+        # Timelines are frequent in documentary storyboards; rotate restrained cues
+        # so a chronology-heavy episode does not collapse into one repeated tick.
+        return ("camera", "tick", "pulse")[index % 3]
     if kind in ("reconstruction", "stickman"):
         if any(x in text for x in ("camino", "corrio", "viajo", "entro", "salio", "huyo", "llego", "cruzo")):
             return "footsteps"
