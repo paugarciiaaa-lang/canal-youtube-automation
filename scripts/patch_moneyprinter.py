@@ -203,6 +203,12 @@ new_audio_guard = """    if not audio_file:
 if old_audio_guard not in task:
     raise SystemExit("No se encontró la validación de audio de task.py; se cancela el parche.")
 task = task.replace(old_audio_guard, new_audio_guard, 1)
+
+old_render = "        bgm_mix_succeeded = video.generate_video(\n            video_path=combined_video_path,\n            audio_path=audio_file,\n            subtitle_path=subtitle_path,\n            output_file=final_video_path,\n            params=params,\n            bgm_file_override=bgm_file_override,\n        )"
+new_render = "        # Keep the generated word-level SRT, but do not burn MPT's one-word\n        # captions into the picture. Phrase-level karaoke captions are rendered\n        # in the final FFmpeg pass after the hybrid montage and SFX mix.\n        video_render_params = __import__(\"copy\").copy(params)\n        video_render_params.subtitle_enabled = False\n        bgm_mix_succeeded = video.generate_video(\n            video_path=combined_video_path,\n            audio_path=audio_file,\n            subtitle_path=subtitle_path,\n            output_file=final_video_path,\n            params=video_render_params,\n            bgm_file_override=bgm_file_override,\n        )"
+if old_render not in task:
+    raise SystemExit("No se encontró el bloque generate_video para desactivar los subtítulos de una palabra.")
+task = task.replace(old_render, new_render, 1)
 task_path.write_text(task, encoding="utf-8")
 
 old_concat = '''            "-c:v",
