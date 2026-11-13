@@ -5,7 +5,7 @@ from scripts.hybrid_visual_engine import classify
 
 class HybridVisualEngineTests(unittest.TestCase):
     def test_generic_fallback_does_not_insert_stickman(self):
-        kind, _ = classify("La familia esperaba noticias durante la noche.", 0)
+        kind, _ = classify("El relato continuó durante varios meses sin novedades.", 0)
         self.assertEqual(kind, "motion")
         self.assertNotEqual(kind, "stickman")
 
