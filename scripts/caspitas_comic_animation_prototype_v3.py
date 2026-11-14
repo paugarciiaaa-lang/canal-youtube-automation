@@ -130,7 +130,7 @@ def explorer(im,t,scene):
     if scene==0: le=p(-78,-54+4*sway); lh=p(-98,-11+4*sway)
     elif scene==1: le=p(-83,-76+14*sway); lh=p(-112,-110+12*sway)
     else: le=p(-70,-73); lh=p(-95,-123+4*sway)
-    sleeve=[p(-55,-123),p(-36,-110),le,p(le[0]-12*scale,le[1]+20*scale),p(-68,-78)]
+    sleeve=[p(-55,-123),p(-36,-110),le,(int(le[0]-12*scale),int(le[1]+20*scale)),p(-68,-78)]
     d.polygon(sleeve,fill=(55,70,76),outline=INK)
     d.line([p(-53,-117),le],fill=(125,135,132),width=max(2,int(3*scale)))
     d.line([le,lh],fill=INK,width=max(4,int(15*scale)))
@@ -139,7 +139,7 @@ def explorer(im,t,scene):
     if scene==0: re=p(78,-84+5*sway); rh=p(108,-51+6*sway)
     elif scene==1: re=p(82,-96-12*sway); rh=p(119,-64-10*sway)
     else: re=p(73,-82); rh=p(112,-121+5*sway)
-    sleeve=[p(47,-124),p(63,-111),re,p(re[0]+12*scale,re[1]+20*scale),p(68,-76)]
+    sleeve=[p(47,-124),p(63,-111),re,(int(re[0]+12*scale),int(re[1]+20*scale)),p(68,-76)]
     d.polygon(sleeve,fill=(55,70,76),outline=INK)
     d.line([p(52,-117),re],fill=(125,135,132),width=max(2,int(3*scale)))
     d.line([re,rh],fill=INK,width=max(4,int(15*scale)))
