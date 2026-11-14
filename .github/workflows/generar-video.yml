@@ -489,7 +489,7 @@ jobs:
 
       - name: Programar documental públicamente en YouTube
         id: youtube_publish
-        if: steps.local_time.outputs.run_now == 'true' && success() && vars.ENABLE_YOUTUBE_PUBLISH == 'true' && steps.monetization_gate.outputs.publish_allowed == 'true'
+        if: steps.local_time.outputs.run_now == 'true' && success() && vars.ENABLE_YOUTUBE_PUBLISH == 'true' && vars.PUBLICATION_APPROVED_BY_USER == 'true' && steps.monetization_gate.outputs.publish_allowed == 'true'
         uses: Upload-Post/upload-post-action@v1
         with:
           api-key: ${{ secrets.UPLOAD_POST_API_KEY }}
@@ -529,12 +529,12 @@ jobs:
           echo "- Publicación autorizada por los controles de derechos: ${{ steps.monetization_gate.outputs.publish_allowed }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Revisión de monetización: pendiente de verificación editorial y de derechos." >> "$GITHUB_STEP_SUMMARY"
           echo "- Fuente visual: Pixabay" >> "$GITHUB_STEP_SUMMARY"
-          if [ "${{ steps.monetization_gate.outputs.publish_allowed }}" = "true" ]; then
+          if [ "${{ steps.monetization_gate.outputs.publish_allowed }}" = "true" ] && [ "${{ vars.PUBLICATION_APPROVED_BY_USER }}" = "true" ]; then
             echo "- YouTube: publicación pública programada para ${{ steps.publish_time.outputs.scheduled_date }} (Europe/Madrid)" >> "$GITHUB_STEP_SUMMARY"
             echo "- Estado de programación: ${{ steps.youtube_publish.outputs.status }}" >> "$GITHUB_STEP_SUMMARY"
             echo "- Trabajo de Upload-Post: ${{ steps.youtube_publish.outputs.job-id }}" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "- YouTube: NO publicado ni programado; los controles de derechos siguen pendientes." >> "$GITHUB_STEP_SUMMARY"
+            echo "- YouTube: NO publicado ni programado; requiere aprobación explícita del usuario y controles de derechos confirmados." >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Subir vídeo y datos como artefacto descargable
