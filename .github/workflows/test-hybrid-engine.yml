@@ -27,6 +27,11 @@ jobs:
           sudo apt-get install -y ffmpeg
           python -m pip install --upgrade pip pillow
 
+      - name: Renderizar prueba cinematográfica 2D Caspitas (8 segundos)
+        run: |
+          python3 -m py_compile scripts/caspitas_comic_animation_prototype.py
+          python3 scripts/caspitas_comic_animation_prototype.py
+
       - name: Compilar y ejecutar pruebas unitarias
         run: |
           python3 -m py_compile scripts/hybrid_visual_engine.py scripts/semantic_storyboard.py scripts/research_visual_assets.py scripts/competitor_benchmark.py
@@ -109,5 +114,13 @@ jobs:
             smoke/hybrid-preview.mp4
             smoke/storyboard.json
             smoke/semantic_plan.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Guardar prototipo cinematográfico Caspitas
+        uses: actions/upload-artifact@v4
+        with:
+          name: caspitas-comic-animation-prototype
+          path: output/caspitas-comic-prototype/caspitas-comic-animation-prototype.mp4
           if-no-files-found: error
           retention-days: 7
