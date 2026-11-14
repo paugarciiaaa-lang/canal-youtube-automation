@@ -96,7 +96,6 @@ def main():
             item["timeliness_type"]="evergreen"
             item["timeliness_reason"]="La novedad no se ha revalidado hoy; se conserva solo como tema histórico."
         fresh.append(item)
-    if len(fresh)<15:
     discovered_urls={x["url"] for x in news}
     # Ninguna propuesta de actualidad se acepta si no cita una URL realmente encontrada hoy.
     for item in fresh:
