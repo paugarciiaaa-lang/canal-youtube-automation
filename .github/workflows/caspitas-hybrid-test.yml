@@ -1,6 +1,8 @@
 name: Caspitas 2.0 - prueba híbrida
 
 on:
+  push:
+    branches: [caspitas-2.0-hybrid-test]
   workflow_dispatch:
     inputs:
       video_subject:
