@@ -30,7 +30,7 @@ jobs:
       - name: Renderizar prueba cinematográfica 2D Caspitas (8 segundos)
         run: |
           python3 -m py_compile scripts/caspitas_comic_animation_prototype_v4.py
-          python3 scripts/caspitas_comic_animation_prototype_v3.py
+          python3 scripts/caspitas_comic_animation_prototype_v4.py
 
       - name: Compilar y ejecutar pruebas unitarias
         run: |
