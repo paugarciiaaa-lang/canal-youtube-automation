@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate Caspitas YouTube metadata and a clean whiteboard thumbnail."""
+"""Generate Caspitas YouTube metadata and a documentary thumbnail from the video."""
 from __future__ import annotations
 import json
 import os
@@ -66,36 +66,30 @@ data["tags"] = [str(x).strip() for x in data.get("tags", fallback()["tags"]) if 
 data["thumbnail_text"] = re.sub(r"\s+", " ", str(data.get("thumbnail_text", "¿QUÉ OCURRIÓ?"))).upper()[:45]
 Path("output/metadata.json").write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
-# Whiteboard thumbnail: warm paper, marker lettering and a hand-drawn investigator.
+# Documentary thumbnail: use an actual frame from the generated episode, never a stick figure or whiteboard drawing.
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 W, H = 1280, 720
-im = Image.new("RGB", (W, H), (250, 249, 245))
+background = Path("output/thumbnail_background.jpg")
+if background.exists():
+    im = ImageOps.fit(Image.open(background).convert("RGB"), (W, H), method=Image.Resampling.LANCZOS)
+else:
+    im = Image.new("RGB", (W, H), (18, 25, 35))
+# Darken the frame so the title remains readable.
+overlay = Image.new("RGBA", (W, H), (5, 10, 18, 125))
+im = Image.alpha_composite(im.convert("RGBA"), overlay).convert("RGB")
 d = ImageDraw.Draw(im)
 font_paths = ["/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
               "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf"]
 font_path = next((p for p in font_paths if Path(p).exists()), None)
 def font(size):
     return ImageFont.truetype(font_path, size) if font_path else ImageFont.load_default()
-
-d.rounded_rectangle((28, 28, W-28, H-28), radius=22, outline=(35,35,35), width=5)
-d.line([(85, 130), (W-85, 130)], fill=(40,40,40), width=4)
 headline = data["thumbnail_text"]
-f = font(72)
-# Fit the short hook across the left half.
-while d.textbbox((0,0), headline, font=f)[2] > 790 and f.size > 38:
+f = font(76)
+while d.textbbox((0, 0), headline, font=f, stroke_width=3)[2] > 1120 and f.size > 38:
     f = font(f.size - 4)
-d.multiline_text((90, 210), headline, font=f, fill=(20,20,20), spacing=18, stroke_width=1)
-# Draw a simple hand-drawn stick investigator and a magnifying glass.
-cx, cy = 1000, 330
-d.ellipse((cx-42,cy-42,cx+42,cy+42), outline=(25,25,25), width=8)
-d.line([(cx,cy+42),(cx,cy+205)], fill=(25,25,25), width=9)
-d.line([(cx,cy+92),(cx-80,cy+145)], fill=(25,25,25), width=9)
-d.line([(cx,cy+92),(cx+78,cy+145)], fill=(25,25,25), width=9)
-d.line([(cx,cy+205),(cx-62,cy+280)], fill=(25,25,25), width=9)
-d.line([(cx,cy+205),(cx+62,cy+280)], fill=(25,25,25), width=9)
-d.ellipse((1080,175,1195,290), outline=(25,25,25), width=8)
-d.line([(1178,275),(1225,322)], fill=(25,25,25), width=12)
-d.text((1111,177), "?", font=font(78), fill=(25,25,25))
-d.line([(90, 555), (690, 555), (710, 548)], fill=(25,25,25), width=7)
-d.text((94, 590), "CASPITAS  •  DOCUMENTAL", font=font(25), fill=(80,80,80))
-im.save("output/thumbnail.png")
-print("Título, descripción, etiquetas y miniatura whiteboard generados.")
+# Keep the hook compact and visually dominant; no decorative characters or illustrations.
+d.rounded_rectangle((48, 475, 1232, 672), radius=18, fill=(5, 10, 18), outline=(240, 190, 65), width=4)
+d.text((82, 505), headline, font=f, fill=(255, 255, 255), stroke_width=3, stroke_fill=(0, 0, 0))
+d.text((84, 625), "CASPITAS  •  DOCUMENTAL", font=font(25), fill=(240, 205, 105))
+im.save("output/thumbnail.png", quality=94)
+print("Título, descripción, etiquetas y miniatura documental generados desde un fotograma real.")
