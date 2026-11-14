@@ -145,10 +145,14 @@ jobs:
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           UPLOAD_POST_API_KEY: ${{ secrets.UPLOAD_POST_API_KEY }}
+          ENABLE_YOUTUBE_PUBLISH: ${{ vars.ENABLE_YOUTUBE_PUBLISH }}
         run: |
-          if [ -z "$UPLOAD_POST_API_KEY" ]; then
-            echo "::error::Falta el secreto UPLOAD_POST_API_KEY. Añádelo en Settings > Secrets and variables > Actions."
+          if [ "$ENABLE_YOUTUBE_PUBLISH" = "true" ] && [ -z "$UPLOAD_POST_API_KEY" ]; then
+            echo "::error::La publicación está activada, pero falta UPLOAD_POST_API_KEY."
             exit 1
+          fi
+          if [ "$ENABLE_YOUTUBE_PUBLISH" != "true" ]; then
+            echo "Publicación desactivada: no se necesita Upload-Post para generar y revisar el documental."
           fi
           if [ -z "$GEMINI_API_KEY" ] && [ -z "$OPENROUTER_API_KEY" ]; then
             echo "::error::Configura al menos un proveedor de IA: GEMINI_API_KEY u OPENROUTER_API_KEY."
