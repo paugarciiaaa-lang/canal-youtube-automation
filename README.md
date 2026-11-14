@@ -10,6 +10,11 @@ Proyecto para producir documentales largos y preparar la futura distribución de
 - Rampa inicial: día 1 = 1 Short; día 2 = 2; día 3 = 3; día 4 = 4; desde el día 5 = 5 Shorts diarios.
 - Zona horaria: Europe/Madrid.
 
+## Fábrica continua de temas actuales
+- Estrategia de generación continua, actualización diaria, efemérides, verificación de novedades y antirrepetición: `docs/topic_factory_currentness.md`.
+- Los 31 temas iniciales son solo una semilla; la futura fábrica deberá generar nuevos candidatos y elegirlos según su relevancia comprobada para la fecha de publicación en `Europe/Madrid`.
+- Antes de programar cada episodio, volverá a comprobar el estado del caso y las fuentes. Si no hay actualidad fiable, elegirá un tema evergreen sin inventar una conexión con el día.
+
 ## Generación actual
 
 El workflow `.github/workflows/generar-video.yml`:
