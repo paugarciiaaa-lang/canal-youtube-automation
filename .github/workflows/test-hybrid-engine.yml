@@ -121,6 +121,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: caspitas-comic-animation-prototype-v2
-          path: output/caspitas-comic-prototype/caspitas-comic-animation-prototype-v2.mp4
+          path: output/caspitas-comic-prototype/caspitas-comic-animation-prototype.mp4
           if-no-files-found: error
           retention-days: 7
