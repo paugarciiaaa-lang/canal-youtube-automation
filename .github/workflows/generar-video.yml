@@ -94,15 +94,15 @@ jobs:
             python3 scripts/daily_topic_factory.py
           fi
           cat > topic_prompt.txt <<'PROMPT'
-          DOCUMENTAL DE 2.300-2.500 PALABRAS en español de España (14-17 min); nunca menos de 2.200. Desarrolla con detalle, sin resumir ni rellenar.
+          DOCUMENTAL DE 2.300-2.500 PALABRAS en español de España (14-17 min); mínimo 2.200. Desarrolla con detalle, sin resumir ni rellenar.
           ESTRUCTURA: gancho; contexto y protagonistas; cronología; pruebas, documentos y testimonios; hipótesis contrastadas; contradicciones y alternativas; hechos frente a debates y lagunas; consecuencias y estado actual; conclusión razonada y pregunta final.
-          RIGOR: no inventes hechos, fechas, nombres, citas, diálogos, documentos, fuentes ni enlaces. Prioriza fuentes primarias, archivos oficiales, estudios e informes identificables. Atribuye hipótesis y separa hechos, teorías, rumores y dudas. Referencias no verificables: márcalas pendientes.
-          ACTUALIDAD: noticias y GDELT son pistas, no pruebas. Comprueba fecha y fuente original, busca comunicados y rectificaciones. Sin vínculo temporal verificable, trata el tema como evergreen. Fecha y atribuye el estado del caso; no digas que sigue abierto o resuelto sin confirmación reciente.
-          VALOR: análisis propio, contexto específico y educativo; episodio original. Propón mapas, cronologías y recursos visuales pertinentes, sin repetir clips.
-          VISUAL CASPITAS: documental realista; usa fotografías históricas, archivo, vídeo documental, mapas, documentos y recursos reales adecuados a cada escena y época. PROHIBIDO: personajes 2D, stickmen, cómic, storyboard ilustrado o animaciones explicativas. No repitas clips ni uses imágenes engañosas. Movimientos discretos y transiciones sobrias; cada imagen debe corresponder a la narración.
-          ESTILO: serio, inmersivo y natural. Sin notas de cámara, instrucciones al editor ni saludos. Trata tragedias con respeto y sin morbo ni imágenes gráficas. Nunca presentes conspiraciones como hechos.
+          RIGOR: no inventes hechos, fechas, nombres, citas, diálogos, documentos, fuentes ni enlaces. Prioriza fuentes primarias, archivos oficiales, estudios e informes identificables. Atribuye hipótesis y separa hechos, teorías, rumores y dudas. Lo no verificable queda pendiente.
+          ACTUALIDAD: noticias y GDELT son pistas, no pruebas. Comprueba fecha y fuente original; busca comunicados y rectificaciones. Sin vínculo temporal verificable, trata el tema como evergreen. Fecha y atribuye el estado del caso; no digas que sigue abierto o resuelto sin confirmación reciente.
+          VALOR: análisis propio, contexto educativo y episodio original. Propón mapas, cronologías y recursos pertinentes, sin repetir clips.
+          VISUAL CASPITAS: documental realista; usa fotografías históricas, archivo, vídeo documental, mapas, documentos y recursos reales adecuados a cada escena y época. PROHIBIDOS personajes 2D, stickmen, cómic, storyboard ilustrado y animaciones explicativas. No repitas clips ni uses imágenes engañosas. Movimientos discretos y transiciones sobrias; cada imagen debe corresponder a la narración.
+          ESTILO: serio, inmersivo y natural. Sin notas de cámara, instrucciones al editor ni saludos. Trata tragedias con respeto, sin morbo ni imágenes gráficas. No presentes conspiraciones como hechos.
           DERECHOS: no presupongas licencias comerciales de voz, música o imágenes; evita música sin licencia documentada.
-PROMPT
+          PROMPT
           echo "Tema seleccionado: $(cat topic_subject.txt)"
           python3 - <<'PY'
           import json
