@@ -185,15 +185,18 @@ def render_scene(scene: dict, folder: Path, seconds: float) -> Path:
             d.text((170,800),"ESCENA RECONSTRUIDA · NO ES MATERIAL DE ARCHIVO",
                    font=font(20,True),fill=AMBER)
         elif kind=="map":
-            d.text((140,340),"LOCALIZACIÓN CON FUENTE CARTOGRÁFICA",font=font(30,True),fill=CYAN)
-            if paste_layered_asset(im,scene,t,(175,390,1745,805)):
-                d=ImageDraw.Draw(im)
-                d.text((190,825),attribution[:115] or "Fuente cartográfica registrada en el manifiesto",font=font(18,True),fill=INK)
+            # Full-frame sourced map treatment: avoid presenting a map as a small slide.
+            has_asset=paste_layered_asset(im,scene,t,(0,0,W,H))
+            d=ImageDraw.Draw(im)
+            d.rectangle((0,0,W,190),fill=(4,10,18,205))
+            d.rectangle((0,900,W,H),fill=(4,10,18,185))
+            d.text((125,205),"LOCALIZACIÓN · CARTOGRAFÍA ATRIBUIDA",font=font(28,True),fill=CYAN)
+            if has_asset:
+                d.text((125,875),("FUENTE: "+attribution)[:130],font=font(18,True),fill=INK)
             else:
-                d.rounded_rectangle((170,420,1745,790),radius=24,fill=(20,37,54,255),outline=RED,width=4)
-                d.text((235,520),"MAPA NO VERIFICADO",font=font(42,True),fill=RED)
-                d.text((235,600),"No se dibuja una ubicación inventada.",font=font(32),fill=INK)
-                text_block(d,(235,680),excerpt,26,INK,75,8)
+                d.rounded_rectangle((280,390,1640,730),radius=28,fill=(9,20,32,220),outline=RED,width=4)
+                d.text((365,465),"MAPA NO VERIFICADO",font=font(48,True),fill=RED)
+                text_block(d,(365,565),"No se dibuja una ubicación ni una ruta sin fuente confirmada.",34,INK,60,12)
         elif kind=="timeline":
             d.text((145,355),"CRONOLOGÍA · FECHAS DEL RELATO",font=font(32,True),fill=CYAN)
             d.line((230,590,1660,590),fill=(101,125,148,255),width=8)
@@ -206,23 +209,29 @@ def render_scene(scene: dict, folder: Path, seconds: float) -> Path:
                 d.text((px-90,485),year,font=font(34,True),fill=INK)
             text_block(d,(220,720),excerpt,32,INK,70,10)
         elif kind=="evidence":
-            d.text((145,350),"DOCUMENTO / PISTA",font=font(30,True),fill=CYAN)
-            if paste_layered_asset(im,scene,t,(220,410,1660,820)):
-                d=ImageDraw.Draw(im)
-                d.text((225,835),("FUENTE: "+attribution)[:115],font=font(17,True),fill=INK)
-                d.text((225,865),"Candidato de archivo; autenticidad pendiente de revisión editorial.",font=font(18,True),fill=AMBER)
+            has_asset=paste_layered_asset(im,scene,t,(0,0,W,H))
+            d=ImageDraw.Draw(im)
+            d.rectangle((0,0,W,190),fill=(4,10,18,210))
+            d.rectangle((0,900,W,H),fill=(4,10,18,190))
+            d.text((125,205),"DOCUMENTO / PISTA",font=font(30,True),fill=CYAN)
+            if has_asset:
+                d.text((125,875),("FUENTE: "+attribution)[:130],font=font(18,True),fill=INK)
+                d.text((125,925),"Autenticidad y contexto pendientes de revisión editorial.",font=font(18,True),fill=AMBER)
             else:
-                d.rounded_rectangle((250,420,1640,825),radius=12,fill=(225,222,209,255),outline=(75,70,62,255),width=5)
-                d.rectangle((285,455,1605,505),fill=(44,53,63,255))
-                d.text((320,466),"RECREACIÓN GRÁFICA · NO ES ORIGINAL",font=font(24,True),fill=(244,240,226))
-                text_block(d,(330,565),excerpt,42,(37,43,49),48,18)
-                d.text((330,755),"ILUSTRACIÓN DEL CONTENIDO NARRADO",font=font(21,True),fill=(142,55,48))
+                d.rounded_rectangle((300,330,1620,790),radius=12,fill=(225,222,209,255),outline=(75,70,62,255),width=5)
+                d.rectangle((335,365,1585,425),fill=(44,53,63,255))
+                d.text((370,382),"RECREACIÓN GRÁFICA · NO ES ORIGINAL",font=font(24,True),fill=(244,240,226))
+                text_block(d,(390,500),excerpt,42,(37,43,49),48,18)
+                d.text((390,720),"ILUSTRACIÓN DEL CONTENIDO NARRADO",font=font(21,True),fill=(142,55,48))
         elif kind in ("photo","parallax"):
-            d.text((145,350),"IMAGEN DOCUMENTAL · MOVIMIENTO POR CAPAS",font=font(29,True),fill=CYAN)
-            if paste_layered_asset(im,scene,t,(190,390,1720,815)):
-                d=ImageDraw.Draw(im)
-                d.text((195,830),("FUENTE: "+attribution)[:115],font=font(17,True),fill=INK)
-                d.text((195,860),"Parallax 2.5D aproximado: fondo difuminado + capa frontal independiente.",font=font(18),fill=AMBER)
+            has_asset=paste_layered_asset(im,scene,t,(0,0,W,H))
+            d=ImageDraw.Draw(im)
+            d.rectangle((0,0,W,190),fill=(4,10,18,205))
+            d.rectangle((0,900,W,H),fill=(4,10,18,190))
+            d.text((125,205),"IMAGEN DOCUMENTAL",font=font(30,True),fill=CYAN)
+            if has_asset:
+                d.text((125,875),("FUENTE: "+attribution)[:130],font=font(18,True),fill=INK)
+                d.text((125,925),"Movimiento 2.5D sutil por capas; no altera el contenido del recurso.",font=font(18),fill=AMBER)
             else:
                 d.text((220,500),"RECURSO VISUAL NO ENCONTRADO",font=font(40,True),fill=RED)
                 text_block(d,(220,600),excerpt,32,INK,70,10)
