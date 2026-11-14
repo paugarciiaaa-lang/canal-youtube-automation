@@ -112,6 +112,21 @@ jobs:
           print("Pistas de investigación:",json.dumps(d.get("research_leads",[]),ensure_ascii=False))
           PY
 
+      - name: Persistir catálogo y cola de temas
+        if: steps.local_time.outputs.run_now == 'true' && success() && github.event.inputs.video_subject == ''
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet -- data/topics.json data/topic_queue.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add data/topics.json data/topic_queue.json
+            git commit -m "Actualizar catálogo y cola de temas de Caspitas"
+            git pull --rebase origin "$GITHUB_REF_NAME"
+            git push origin "HEAD:$GITHUB_REF_NAME"
+          else
+            echo "El catálogo y la cola no requieren cambios."
+          fi
+
       - name: Revalidar actualidad antes de crear el guion y programar
         if: steps.local_time.outputs.run_now == 'true' && success()
         run: |
