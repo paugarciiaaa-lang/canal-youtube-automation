@@ -89,8 +89,23 @@ def main():
     print(f"Fecha local: {TODAY}; noticias candidatas descubiertas: {len(news)}")
     # Revalida un tema de actualidad al día de la publicación: debe tener novedad reciente
     # y fuente de descubrimiento; el editor debe comprobar las fuentes primarias.
+    # La lista inicial actúa como reserva evergreen; se incorporan todos los temas no usados.
+    queued_ids={x.get("id") for x in pending}
+    evergreen_seed=[{"id":t["id"],"video_subject":t["video_subject"],
+        "timeliness_type":"evergreen","timeliness_reason":"",
+        "research_leads":[t["video_subject"]],"source_urls":[],
+        "checked_on":TODAY,"status":"queued"}
+        for t in topics if t["id"] not in used and t["id"] not in queued_ids]
     fresh=[x for x in pending if x.get("timeliness_type")!="recent_update" or
            x.get("checked_on")==TODAY]
+    fresh.extend(evergreen_seed)
+    discovered_urls={x["url"] for x in news}
+    # Ninguna propuesta de actualidad se acepta si no cita una URL realmente encontrada hoy.
+    for item in fresh:
+        if item.get("timeliness_type")=="recent_update":
+            if not set(item.get("source_urls",[])).intersection(discovered_urls):
+                item["timeliness_type"]="evergreen"
+                item["timeliness_reason"]="Actualidad no corroborada por el feed de descubrimiento; se trata como evergreen."
     if len(fresh)<15:
         prompt=f"""Eres editor documental de Caspitas, canal español sobre misterios reales, desapariciones,
 enigmas históricos, arqueología, expediciones y sucesos documentados.
@@ -123,7 +138,8 @@ No reutilices casos de la lista. Para actualidad, fecha y URL deben proceder de 
         # Evita reiniciar ciegamente el ciclo y repetir un tema; fallo seguro.
         raise SystemExit("No quedan temas válidos. La fábrica necesita nuevas ideas verificables.")
     # Actualidad tiene prioridad solo si se ha revisado hoy; el resto rota por cola.
-    fresh.sort(key=lambda x:(0 if x.get("timeliness_type") in ("recent_update","anniversary") and x.get("checked_on")==TODAY else 1))
+    fresh.sort(key=lambda x:(0 if x.get("timeliness_type")=="recent_update" and
+        x.get("checked_on")==TODAY and set(x.get("source_urls",[])).intersection(discovered_urls) else 1))
     selected=fresh[0]
     selected["status"]="selected"
     selected["selected_for_date"]=TODAY
