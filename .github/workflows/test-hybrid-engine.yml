@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - caspitas-2.0-hybrid-test
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,28 +16,19 @@ jobs:
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
-
       - name: Preparar Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Instalar FFmpeg y Pillow
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
           python -m pip install --upgrade pip pillow
-
-      - name: Renderizar prueba cinematográfica 2D Caspitas (8 segundos)
-        run: |
-          python3 -m py_compile scripts/caspitas_comic_animation_prototype_v4.py
-          python3 scripts/caspitas_comic_animation_prototype_v4.py
-
       - name: Compilar y ejecutar pruebas unitarias
         run: |
           python3 -m py_compile scripts/hybrid_visual_engine.py scripts/semantic_storyboard.py scripts/research_visual_assets.py scripts/competitor_benchmark.py
           python3 -m unittest discover -s tests -v
-
       - name: Crear documental sintético de tres minutos
         run: |
           mkdir -p smoke
@@ -70,14 +62,13 @@ jobs:
               draw.text((80,100),title,fill=(30,40,50))
               image.save(Path("smoke")/name)
           scenes=[
-            {"index":1,"start":5,"duration":4.5,"type":"timeline","label":"Cronología","excerpt":"En 1981 el investigador llegó a la estación.","years":["1981"],"confidence":0.9,"factual_basis":"En 1981 el investigador llegó a la estación."},
+            {"index":1,"start":1,"duration":4.5,"type":"timeline","label":"Cronología","excerpt":"En 1981 el investigador llegó a la estación.","years":["1981"],"confidence":0.9,"factual_basis":"En 1981 el investigador llegó a la estación."},
             {"index":2,"start":50,"duration":4.5,"type":"map","label":"Mapa de prueba","excerpt":"La expedición avanzó por la montaña.","asset_path":"smoke/map.png","asset":{"attribution":"TEST SOURCE"},"confidence":0.9,"factual_basis":"La expedición avanzó por la montaña."},
             {"index":3,"start":95,"duration":4.5,"type":"document","label":"Documento","excerpt":"El expediente contenía una carta y una prueba.","asset_path":"smoke/document.png","asset":{"license":"TEST CC0"},"confidence":0.9,"factual_basis":"El expediente contenía una carta y una prueba."},
             {"index":4,"start":140,"duration":4.5,"type":"parallax","label":"Parallax","excerpt":"La expedición avanzó por la montaña.","asset_path":"smoke/photo.png","asset":{"license":"TEST CC0"},"confidence":0.9,"factual_basis":"La expedición avanzó por la montaña."}
           ]
           Path("smoke/semantic_plan.json").write_text(json.dumps({"scene_count":len(scenes),"scenes":scenes},ensure_ascii=False),encoding="utf-8")
           PY
-
       - name: Probar renderizado semántico, capas 2.5D y sincronización
         run: |
           python3 scripts/hybrid_visual_engine.py \
@@ -103,10 +94,9 @@ jobs:
               ], text=True))
           drift = abs(duration("smoke/base.mp4") - duration("smoke/hybrid-preview.mp4"))
           assert drift < 1.0, drift
-          print(f"Smoke test semántico correcto: {data['scene_count']} overlays, assets y parallax; diferencia {drift:.3f}s")
+          print(f"Smoke test semántico correcto: {data['scene_count']} overlays; diferencia {drift:.3f}s")
           PY
-
-      - name: Guardar muestra técnica
+      - name: Guardar muestra técnica para revisión
         uses: actions/upload-artifact@v4
         with:
           name: caspitas-hybrid-smoke-test
@@ -114,13 +104,5 @@ jobs:
             smoke/hybrid-preview.mp4
             smoke/storyboard.json
             smoke/semantic_plan.json
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Guardar prototipo cinematográfico Caspitas
-        uses: actions/upload-artifact@v4
-        with:
-          name: caspitas-comic-animation-prototype-v4
-          path: output/caspitas-comic-prototype/caspitas-comic-animation-prototype.mp4
           if-no-files-found: error
           retention-days: 7
