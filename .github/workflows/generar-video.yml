@@ -113,7 +113,7 @@ jobs:
           PY
 
       - name: Persistir catálogo y cola de temas
-        if: steps.local_time.outputs.run_now == 'true' && success() && github.event.inputs.video_subject == ''
+        if: steps.local_time.outputs.run_now == 'true' && success() && !github.event.inputs.video_subject
         run: |
           set -euo pipefail
           if ! git diff --quiet -- data/topics.json data/topic_queue.json; then
