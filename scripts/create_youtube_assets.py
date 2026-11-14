@@ -11,6 +11,9 @@ from PIL import Image, ImageDraw, ImageFont
 topic = Path("topic_subject.txt").read_text(encoding="utf-8").strip()
 source_path = Path("output/script_source.txt")
 source = source_path.read_text(encoding="utf-8", errors="ignore") if source_path.exists() else ""
+# Si la fuente es un SRT, retirar índices y marcas de tiempo y conservar solo el texto hablado.
+source = re.sub(r"(?m)^\s*\d+\s*$", " ", source)
+source = re.sub(r"(?m)^\s*\d{2}:\d{2}:\d{2}[,.]\d{3}\s*-->.*$", " ", source)
 source = re.sub(r"\[\d{2}:\d{2}(?::\d{2})?[,.]\d+\]", " ", source)
 source = re.sub(r"<[^>]+>", " ", source)
 source = re.sub(r"\s+", " ", source).strip()[:14000]
