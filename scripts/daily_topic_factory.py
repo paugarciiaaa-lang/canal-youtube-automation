@@ -89,20 +89,14 @@ def main():
     print(f"Fecha local: {TODAY}; noticias candidatas descubiertas: {len(news)}")
     # Revalida un tema de actualidad al día de la publicación: debe tener novedad reciente
     # y fuente de descubrimiento; el editor debe comprobar las fuentes primarias.
-    # La lista inicial actúa como reserva evergreen; se incorporan todos los temas no usados.
-    queued_ids={x.get("id") for x in pending}
-    evergreen_seed=[{"id":t["id"],"video_subject":t["video_subject"],
-        "timeliness_type":"evergreen","timeliness_reason":"",
-        "research_leads":[t["video_subject"]],"source_urls":[],
-        "checked_on":TODAY,"status":"queued"}
-        for t in topics if t["id"] not in used and t["id"] not in queued_ids]
+    # La cola manda: el catálogo solo sirve como pequeño respaldo si no hay nada pendiente.
     fresh=[]
     for item in pending:
         if item.get("timeliness_type")=="recent_update" and item.get("checked_on")!=TODAY:
             item["timeliness_type"]="evergreen"
             item["timeliness_reason"]="La novedad no se ha revalidado hoy; se conserva solo como tema histórico."
         fresh.append(item)
-    fresh.extend(evergreen_seed)
+    if len(fresh)<15:
     discovered_urls={x["url"] for x in news}
     # Ninguna propuesta de actualidad se acepta si no cita una URL realmente encontrada hoy.
     for item in fresh:
@@ -139,7 +133,13 @@ No reutilices casos de la lista. Para actualidad, fecha y URL deben proceder de 
         except Exception as e:
             print(f"Generación de nuevas ideas no disponible; se usa cola existente: {e}",file=sys.stderr)
     if not fresh:
-        # Evita reiniciar ciegamente el ciclo y repetir un tema; fallo seguro.
+        # Respaldo limitado para que el canal no se detenga si el proveedor IA falla.
+        fallback=[t for t in topics if t["id"] not in used]
+        for t in fallback[:5]:
+            fresh.append({"id":t["id"],"video_subject":t["video_subject"],
+                "timeliness_type":"evergreen","timeliness_reason":"Respaldo del catálogo existente.",
+                "research_leads":[t["video_subject"]],"source_urls":[],"checked_on":TODAY,"status":"queued"})
+    if not fresh:
         raise SystemExit("No quedan temas válidos. La fábrica necesita nuevas ideas verificables.")
     # Actualidad tiene prioridad solo si se ha revisado hoy; el resto rota por cola.
     fresh.sort(key=lambda x:(0 if x.get("timeliness_type")=="recent_update" and
