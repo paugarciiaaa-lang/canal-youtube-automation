@@ -1,0 +1,66 @@
+name: Actualizar fábrica diaria de temas Caspitas
+
+on:
+  schedule:
+    # Se ejecuta antes de la generación diaria (19:00/20:00 UTC).
+    - cron: '30 17 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: caspitas-topic-factory
+  cancel-in-progress: false
+
+jobs:
+  refresh-topics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Generar temas con contexto de actualidad
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/daily_topic_factory.py
+          python scripts/daily_topic_factory.py
+
+      - name: Guardar nuevas ideas para el selector diario
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet -- data/topics.json data/topic_queue.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add data/topics.json data/topic_queue.json
+            git commit -m "Actualizar temas actuales y cola editorial de Caspitas"
+            git push
+          else
+            echo "No hay cambios nuevos en la cola de temas."
+          fi
+
+      - name: Resumen de la fábrica
+        if: always()
+        run: |
+          echo "## Fábrica diaria de temas Caspitas" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Fecha editorial: $(TZ=Europe/Madrid date +%F)" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f data/topic_queue.json ]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          q=json.loads(Path("data/topic_queue.json").read_text())
+          print(f"- Temas pendientes en reserva: {len(q.get('items', []))}")
+          PY
+          fi
+          echo "- Los titulares de actualidad son pistas; las fuentes primarias deben verificarse durante la investigación y antes de publicar." >> "$GITHUB_STEP_SUMMARY"
