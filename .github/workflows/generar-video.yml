@@ -103,6 +103,13 @@ jobs:
           ESTILO: serio, inmersivo y natural. Sin notas de cámara, instrucciones al editor ni saludos. Trata tragedias con respeto, sin morbo ni imágenes gráficas. No presentes conspiraciones como hechos.
           DERECHOS: no presupongas licencias comerciales de voz, música o imágenes; evita música sin licencia documentada.
           PROMPT
+          python3 - <<'PY'
+          from pathlib import Path
+          prompt = Path("topic_prompt.txt").read_text(encoding="utf-8")
+          print(f"Longitud del prompt MoneyPrinterTurbo: {len(prompt)} caracteres")
+          if len(prompt) > 2000:
+              raise SystemExit("El prompt supera el límite de 2.000 caracteres de MoneyPrinterTurbo.")
+          PY
           echo "Tema seleccionado: $(cat topic_subject.txt)"
           python3 - <<'PY'
           import json
