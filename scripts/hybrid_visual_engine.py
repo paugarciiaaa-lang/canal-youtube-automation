@@ -92,18 +92,14 @@ def text_block(draw, xy, text, size=42, color=INK, max_chars=52, spacing=12):
 
 def base_frame(index: int, total: int):
     from PIL import Image, ImageDraw
-    # Transparent canvas: the source documentary footage remains visible behind
-    # the explanatory card, and the lower subtitle-safe area stays unobstructed.
+    # Transparent documentary overlay: preserve the original footage as the visual base.
     im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
-    d.rounded_rectangle((58, 58, W-58, 900), radius=34,
-                        fill=(11, 18, 29, 185), outline=(82, 103, 126, 245), width=4)
-    d.rectangle((58, 58, 78, 900), fill=AMBER)
-    d.text((112, 90), "CASPITAS  /  DOCUMENTAL", font=font(24, True), fill=MUTED)
-    d.line((112, 138, W-112, 138), fill=(72, 91, 112), width=2)
-    # Animated accent sweep inside the card.
-    x = int(140 + (W-280) * ((index / max(1,total-1)) * .65 + .15))
-    d.ellipse((x-180, 170, x+180, 530), fill=(18, 34, 48, 205))
+    # Compact editorial identifier only; do not cover the documentary frame with a giant card.
+    d.rounded_rectangle((54, 48, 690, 126), radius=22,
+                        fill=(5, 12, 22, 185), outline=(115, 142, 166, 220), width=2)
+    d.rectangle((54, 48, 66, 126), fill=AMBER)
+    d.text((92, 73), "CASPITAS  /  DOCUMENTAL", font=font(25, True), fill=INK)
     return im
 
 def draw_stickman(d, t: float, x=1450, y=440, scale=1.0, pose="investigate"):
@@ -169,15 +165,25 @@ def render_scene(scene: dict, folder: Path, seconds: float) -> Path:
         d.text((150,222),scene["label"].upper(),font=font(28,True),fill=AMBER)
         attribution=(scene.get("asset") or {}).get("attribution") or (scene.get("asset") or {}).get("license") or ""
         if kind in ("stickman","reconstruction"):
-            d.text((135,340),"RECREACIÓN 2D",font=font(25,True),fill=CYAN)
-            d.text((135,405),"Representación visual,",font=font(34),fill=INK)
-            d.text((135,455),"no imagen de archivo.",font=font(34),fill=INK)
-            d.polygon([(1120,300),(1700,300),(1830,820),(990,820)],fill=(27,43,60,255),outline=(79,101,124,255))
-            d.rectangle((1320,390,1600,820),fill=(15,26,39,255),outline=(117,137,154,255),width=8)
-            d.ellipse((1535,590,1560,615),fill=AMBER)
-            draw_stickman(d,t,x=1110+int(22*math.sin(t*math.tau)),y=365,scale=1,pose="walk" if kind=="reconstruction" else "investigate")
-            if kind=="reconstruction": d.text((1370,340),"SECUENCIA ILUSTRADA",font=font(24,True),fill=RED)
-            text_block(d,(140,650),excerpt,30,INK,48,8)
+            # Cinematic environmental reconstruction: no stick figures or generic mascot.
+            d.text((135, 175), "RECREACIÓN ILUSTRATIVA", font=font(25,True), fill=AMBER)
+            d.rounded_rectangle((120,235,1800,850), radius=28,
+                                fill=(7,14,25,210), outline=(88,111,135,230), width=3)
+            # Layered mountain / terrain silhouettes, built as scenery rather than a character card.
+            d.polygon([(120,690),(360,455),(560,620),(820,365),(1080,650),(1330,430),(1600,665),(1800,520),(1800,850),(120,850)],
+                      fill=(29,48,66,255))
+            d.polygon([(120,760),(420,610),(680,735),(980,555),(1240,740),(1510,590),(1800,730),(1800,850),(120,850)],
+                      fill=(14,31,47,255))
+            # Small environmental props provide scale and a narrative clue.
+            d.line((260,790,520,710,730,735,960,640,1180,675), fill=(190,157,105,255), width=10)
+            d.polygon([(1330,690),(1435,565),(1540,690)], fill=(18,27,37,255), outline=AMBER)
+            d.polygon([(1375,690),(1435,610),(1495,690)], fill=(38,55,68,255))
+            d.rectangle((1390,690,1480,785), fill=(10,19,29,255), outline=(125,139,148,255), width=5)
+            d.ellipse((1510,715,1560,765), fill=(255,190,86,90))
+            d.ellipse((1522,727,1548,753), fill=AMBER)
+            text_block(d,(170,285),excerpt,34,INK,66,12)
+            d.text((170,800),"ESCENA RECONSTRUIDA · NO ES MATERIAL DE ARCHIVO",
+                   font=font(20,True),fill=AMBER)
         elif kind=="map":
             d.text((140,340),"LOCALIZACIÓN CON FUENTE CARTOGRÁFICA",font=font(30,True),fill=CYAN)
             if paste_layered_asset(im,scene,t,(175,390,1745,805)):
@@ -246,7 +252,7 @@ def classify(text: str, index: int) -> tuple[str,str]:
         return "reconstruction", "Reconstrucción"
     if any(k in low for k in ("millones","por ciento","kilómetros","horas","días","metros","número","cifra")):
         return "motion", "Dato destacado"
-    return ("stickman" if index % 2 == 0 else "motion"), ("Investigación" if index % 2 == 0 else "Detalle clave")
+    return ("photo" if index % 2 == 0 else "motion"), ("Contexto visual" if index % 2 == 0 else "Detalle clave")
 
 def plan(cues: list[dict], duration: float, interval: float, scene_seconds: float) -> list[dict]:
     scenes, cursor, index = [], max(18.0, interval*.65), 0
@@ -296,7 +302,7 @@ def main():
     if args.plan and args.plan.is_file():
         semantic=json.loads(args.plan.read_text(encoding="utf-8"))
         type_map={"photo":"photo","map":"map","document":"evidence","reconstruction":"reconstruction",
-                  "stickman":"stickman","timeline":"timeline","motion_graphic":"motion","parallax":"parallax"}
+                  "stickman":"reconstruction","timeline":"timeline","motion_graphic":"motion","parallax":"parallax"}
         scenes=[]
         for item in semantic.get("scenes",[]):
             kind=type_map.get(item.get("type"))
