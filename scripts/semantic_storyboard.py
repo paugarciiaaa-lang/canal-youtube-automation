@@ -67,7 +67,7 @@ def transcript_grounded_scenes(cues, windows, existing):
             years=re.findall(r"\b(?:18|19|20)\d{2}\b",excerpt)[:4]
             label="Fecha mencionada en el relato"
         elif re.search(r"\b(llego|llegó|entro|entró|salio|salió|camino|caminó|viajo|viajó|encontro|encontró|desaparecio|desapareció|cruzo|cruzó|huyo|huyó)\b",excerpt.casefold()):
-            kind="stickman"
+            kind="reconstruction"
             years=[]
             label="Recreación ilustrativa"
         else:
@@ -114,7 +114,7 @@ def main():
                 for x in raw_benchmark.get("videos",[])[:8]]}
         except Exception: benchmark={"status":"unavailable"}
     brief={"topic":a.topic,"windows":windows,"public_competitor_benchmark":benchmark,
-      "instructions":"Crea un storyboard documental semántico. Devuelve SOLO JSON con scenes. Cada escena: start,duration,type,label,excerpt,purpose,focus,years,location_query,document_search,visual_search,confidence,factual_basis. Tipos permitidos: photo,map,document,reconstruction,stickman,timeline,motion_graphic,parallax. Una escena útil por ventana como máximo. Usa el benchmark público solo para detectar enfoques de títulos, duración y presentación que merezcan diferenciarse; no copies títulos, miniaturas ni escenas. No deduzcas CTR ni retención. Usa únicamente datos explícitos de la transcripción. No inventes lugares, fechas, personas, citas, documentos, estadísticas, rutas ni fuentes. location_query solo si un lugar real aparece literalmente en el texto. document_search solo como consulta para buscar material; no afirmes que existe ni que es auténtico. factual_basis debe ser una frase textual de la transcripción. excerpt máximo 220 caracteres. El campo start debe ser tiempo absoluto en segundos desde el inicio del vídeo, no relativo a la ventana. Duración 4-6 segundos y dentro de la ventana. Alterna tipos visuales y evita Stickman constante. Devuelve JSON estricto."}
+      "instructions":"Crea un storyboard documental semántico. Devuelve SOLO JSON con scenes. Cada escena: start,duration,type,label,excerpt,purpose,focus,years,location_query,document_search,visual_search,confidence,factual_basis. Tipos permitidos: photo,map,document,reconstruction,timeline,motion_graphic,parallax. Una escena útil por ventana como máximo. Usa el benchmark público solo para detectar enfoques de títulos, duración y presentación que merezcan diferenciarse; no copies títulos, miniaturas ni escenas. No deduzcas CTR ni retención. Usa únicamente datos explícitos de la transcripción. No inventes lugares, fechas, personas, citas, documentos, estadísticas, rutas ni fuentes. location_query solo si un lugar real aparece literalmente en el texto. document_search solo como consulta para buscar material; no afirmes que existe ni que es auténtico. factual_basis debe ser una frase textual de la transcripción. excerpt máximo 220 caracteres. El campo start debe ser tiempo absoluto en segundos desde el inicio del vídeo, no relativo a la ventana. Duración 4-6 segundos y dentro de la ventana. Dirección visual Caspitas: documental cinematográfico híbrido. Prioriza fotografía/vídeo documental, mapas con fuentes, documentos atribuidos, cronologías y recreaciones ambientales 2D/2.5D sin stickman ni personaje-mascota. Cada escena debe añadir información visual concreta; evita tarjetas opacas a pantalla completa, diapositivas y zooms repetidos. Las recreaciones se identifican como ilustrativas y nunca se presentan como archivo real. Alterna tipos visuales con intención narrativa. Devuelve JSON estricto."}
     prompt="Eres director documental e investigador visual. Diseña el storyboard solo con la transcripción proporcionada. "+json.dumps(brief,ensure_ascii=False)
     body=json.dumps({"model":a.model,"temperature":0.15,"max_tokens":6500,
       "messages":[{"role":"system","content":"Devuelve JSON estricto. No inventes hechos. Si no hay evidencia, deja campos vacíos."},
@@ -154,7 +154,7 @@ def main():
             f"Último error: {last_error}"
         )
         parsed={"scenes":[],"fallback_reason":last_error}
-    allowed={"photo","map","document","reconstruction","stickman","timeline","motion_graphic","parallax"}
+    allowed={"photo","map","document","reconstruction","timeline","motion_graphic","parallax"}
     transcript_norm=re.sub(r"\s+"," "," ".join(c["text"] for c in cues)).casefold()
     transcript_evidence=normalize_evidence(transcript_norm)
     scenes=[]
