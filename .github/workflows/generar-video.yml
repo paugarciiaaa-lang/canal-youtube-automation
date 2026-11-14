@@ -99,7 +99,7 @@ jobs:
           RIGOR: no inventes hechos, fechas, nombres, citas, diálogos, documentos, fuentes ni enlaces. Prioriza fuentes primarias, archivos oficiales, estudios académicos e informes identificables. Atribuye las hipótesis y distingue claramente hechos, teorías, rumores y dudas. Si no puedes verificar una referencia, márcala como pendiente; no la presentes como verificada.
           ACTUALIDAD: las noticias y GDELT son pistas, nunca pruebas. Comprueba la fecha, abre la fuente original, busca comunicados oficiales y actualizaciones/rectificaciones. Si no puedes verificar el vínculo temporal, trata el caso como evergreen. Expresa el estado del caso con fecha y atribución; no afirmes que sigue abierto o está resuelto sin confirmación reciente.
           VALOR: análisis propio, contexto específico y educativo; episodio original, no plantilla repetida. Sugiere recursos visuales pertinentes, mapas y cronologías, sin repetir clips de stock.
-          DIRECCIÓN VISUAL CASPITAS (referencia: VISUAL_REFERENCE_CASPITAS.md): cuando una escena se represente mediante ilustración, usar estética 2D de cómic/storyboard, contornos negros limpios, personajes sencillos pero expresivos (nunca stickman de líneas), fondos completos con profundidad, sombras suaves e iluminación cinematográfica. En secuencias de acción, plantear viñetas consecutivas con el mismo personaje, vestuario, proporciones y accesorios; variar planos y poses sin perder continuidad. Paleta azul/gris fría para tensión nocturna y acentos cálidos para guiar la mirada. Usar líneas de movimiento y símbolos de cómic solo cuando aporten significado. No incluir marcas de agua ni texto ilegible. Alternar ilustraciones con fotografías, vídeo documental, mapas y documentos reales; no convertir todo el episodio en dibujos. Cada recurso debe corresponder al hecho narrado y respetar su época.
+          DIRECCIÓN VISUAL CASPITAS: documental realista. Prioriza fotografías históricas, material de archivo, vídeo documental, mapas, documentos y recursos reales pertinentes a cada escena. No usar personajes 2D, stickmen, cómic, storyboard ilustrado ni animaciones explicativas. Evita repetir el mismo clip; cada recurso debe corresponder al hecho narrado, respetar su época y no inducir a error. Usa movimientos de cámara discretos sobre imágenes fijas y transiciones sobrias. La imagen debe acompañar exactamente lo que se está contando.
           ESTILO: tono serio, inmersivo y natural. Sin notas de cámara, instrucciones al editor ni saludos. Trata tragedias con respeto, sin morbo ni imágenes gráficas. No presentes conspiraciones como hechos.
           DERECHOS: no presupongas licencia comercial de voz, música o imágenes; evita música sin licencia documentada.
           PROMPT
@@ -419,13 +419,15 @@ jobs:
       # Los mapas/documentos gráficos solo se incorporarán en una fase posterior
       # si pueden validarse y aportan valor al relato.
 
-      - name: Crear título, descripción y miniatura whiteboard
+      - name: Crear título, descripción y miniatura documental
         id: youtube_assets
         if: steps.local_time.outputs.run_now == 'true' && success()
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           set -euo pipefail
+          video="${{ steps.prepared_video.outputs.video_path }}"
+          ffmpeg -y -ss 00:00:30 -i "$video" -frames:v 1 -q:v 2 output/thumbnail_background.jpg
           python3 scripts/create_youtube_assets.py
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
           import json
@@ -476,7 +478,7 @@ jobs:
 
       - name: Programar documental públicamente en YouTube
         id: youtube_publish
-        if: steps.local_time.outputs.run_now == 'true' && success() && steps.monetization_gate.outputs.publish_allowed == 'true'
+        if: steps.local_time.outputs.run_now == 'true' && success() && vars.ENABLE_YOUTUBE_PUBLISH == 'true' && steps.monetization_gate.outputs.publish_allowed == 'true'
         uses: Upload-Post/upload-post-action@v1
         with:
           api-key: ${{ secrets.UPLOAD_POST_API_KEY }}
