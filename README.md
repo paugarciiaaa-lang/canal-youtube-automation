@@ -27,7 +27,8 @@ El workflow `.github/workflows/generar-video.yml`:
 - Intenta Gemini 3.5 Flash Lite y después Gemini 3.8 Flash; si ambos fallan o generan un vídeo demasiado corto, recurre a OpenRouter.
 - Comprueba el MP4 y su duración tras cada intento antes de darlo por válido, evitando aceptar vídeos incompletos o de menos de 9 minutos.
 - Da hasta 150 minutos a cada intento de proveedor y hasta 180 minutos al trabajo completo, con registro de errores.
-- Usa Pixabay para materiales visuales y la voz española masculina `es-ES-AlvaroNeural` mediante Edge TTS.
+- Usa material documental de Pixabay y la voz española masculina `es-ES-AlvaroNeural` mediante Edge TTS.
+- No añade ilustraciones 2D, personajes dibujados, stickmen ni storyboards animados: conserva el montaje documental original.
 - Aumenta el tiempo límite de concatenación de FFmpeg y permite procesar dos clips simultáneamente para reducir el cuello de botella del montaje.
 - Comprueba que el MP4 exista y dure al menos 10 minutos; el objetivo editorial actual es de 14-17 minutos.
 - Guarda el vídeo y los datos básicos como artefacto de GitHub Actions durante 14 días.
@@ -37,7 +38,7 @@ Los secretos requeridos se configuran en GitHub Actions como `GEMINI_API_KEY` y 
 
 ## Estado de automatización
 
-La generación del documental largo está configurada, pero debe superar pruebas reales de calidad y estabilidad antes de considerarse lista para producción.
+La generación del documental largo está configurada, pero debe superar pruebas reales de calidad y estabilidad antes de considerarse lista para producción. El motor de ilustraciones 2D se ha retirado del flujo activo; los vídeos vuelven a utilizar el montaje documental original con fotografías y clips reales.
 
 La cola de Shorts está implementada como lógica de planificación, pero todavía no genera automáticamente los cinco clips, no conserva sus archivos de vídeo y no los publica. La publicación automática del documental largo en YouTube también permanece desactivada.
 
