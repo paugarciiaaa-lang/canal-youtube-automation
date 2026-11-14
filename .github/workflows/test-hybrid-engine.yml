@@ -29,7 +29,7 @@ jobs:
 
       - name: Renderizar prueba cinematográfica 2D Caspitas (8 segundos)
         run: |
-          python3 -m py_compile scripts/caspitas_comic_animation_prototype_v3.py
+          python3 -m py_compile scripts/caspitas_comic_animation_prototype_v4.py
           python3 scripts/caspitas_comic_animation_prototype_v3.py
 
       - name: Compilar y ejecutar pruebas unitarias
@@ -120,7 +120,7 @@ jobs:
       - name: Guardar prototipo cinematográfico Caspitas
         uses: actions/upload-artifact@v4
         with:
-          name: caspitas-comic-animation-prototype-v3
+          name: caspitas-comic-animation-prototype-v4
           path: output/caspitas-comic-prototype/caspitas-comic-animation-prototype.mp4
           if-no-files-found: error
           retention-days: 7
