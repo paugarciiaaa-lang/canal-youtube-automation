@@ -414,57 +414,10 @@ jobs:
             echo "Tema introducido manualmente; no se modifica el historial automático."
           fi
 
-      - name: Instalar herramientas del motor visual híbrido
-        if: steps.local_time.outputs.run_now == 'true'
-        run: python -m pip install pillow yt-dlp
-
-      - name: Analizar referencias visuales públicas del tema
-        if: steps.local_time.outputs.run_now == 'true' && success()
-        run: |
-          set -euo pipefail
-          python3 scripts/competitor_benchmark.py \
-            --topic "$(cat output/tema.txt)" \
-            --output output/competitor_benchmark.json
-
-      - name: Crear storyboard semántico con continuidad visual Caspitas
-        if: steps.local_time.outputs.run_now == 'true' && success()
-        env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        run: |
-          set -euo pipefail
-          python3 -m py_compile scripts/semantic_storyboard.py
-          python3 scripts/semantic_storyboard.py \
-            --srt output/subtitles.srt \
-            --topic "$(cat output/tema.txt)" \
-            --benchmark output/competitor_benchmark.json \
-            --output output/semantic_storyboard.json
-
-      - name: Buscar mapas y material documental con licencia identificable
-        if: steps.local_time.outputs.run_now == 'true' && success()
-        run: |
-          set -euo pipefail
-          python3 -m py_compile scripts/research_visual_assets.py
-          python3 scripts/research_visual_assets.py \
-            --storyboard output/semantic_storyboard.json \
-            --output-dir output/visual_assets
-
-      - name: Aplicar ilustraciones cómic y montaje visual híbrido
-        id: hybrid_visuals
-        if: steps.local_time.outputs.run_now == 'true' && success()
-        run: |
-          set -euo pipefail
-          python3 -m py_compile scripts/hybrid_visual_engine.py
-          python3 scripts/hybrid_visual_engine.py \
-            --video "${{ steps.prepared_video.outputs.video_path }}" \
-            --srt output/subtitles.srt \
-            --plan output/semantic_storyboard.json \
-            --output output/Caspitas-hybrid.mp4 \
-            --storyboard output/storyboard.json \
-            --interval 55 \
-            --scene-seconds 4.5
-          python3 scripts/validate_video.py output/Caspitas-hybrid.mp4 --report output/hybrid_qa_report.json
-          echo "video_path=output/Caspitas-hybrid.mp4" >> "$GITHUB_OUTPUT"
-          echo "Montaje visual híbrido completado; se conserva el audio original."
+      # Se omite el motor de ilustraciones 2D: el documental conserva el montaje
+      # documental original de MoneyPrinterTurbo con material real de Pixabay.
+      # Los mapas/documentos gráficos solo se incorporarán en una fase posterior
+      # si pueden validarse y aportan valor al relato.
 
       - name: Crear título, descripción y miniatura whiteboard
         id: youtube_assets
@@ -530,7 +483,7 @@ jobs:
           profile: default
           type: video
           platforms: youtube
-          media: ${{ steps.hybrid_visuals.outputs.video_path }}
+          media: ${{ steps.prepared_video.outputs.video_path }}
           text: ${{ steps.youtube_assets.outputs.title }}
           scheduled-date: ${{ steps.publish_time.outputs.scheduled_date }}
           timezone: Europe/Madrid
@@ -553,7 +506,7 @@ jobs:
           echo "- Control técnico: $(python3 -c 'import json; print(json.load(open("output/qa_report.json"))["status"])')" >> "$GITHUB_STEP_SUMMARY"
           echo "- Sincronización A/V: $(python3 -c 'import json; print(json.load(open("output/qa_report.json"))["audio_video_drift_seconds"])') segundos de diferencia" >> "$GITHUB_STEP_SUMMARY"
           echo "- Subtítulos: $(python3 -c 'import json; print(json.load(open("output/qa_report.json"))["subtitle_cues"])') cues revisados; comprobar también la escucha final" >> "$GITHUB_STEP_SUMMARY"
-          echo "- FFmpeg: preset veryfast y CRF 23; subtítulo palabra a palabra conservado sin animación spring costosa" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Visuales: montaje documental original con material real de Pixabay; sin escenas ilustradas 2D añadidas" >> "$GITHUB_STEP_SUMMARY"
           echo "- Voz: es-ES-AlvaroNeural (Edge TTS)" >> "$GITHUB_STEP_SUMMARY"
           echo "- Subtítulos: palabra a palabra, sin animación spring, amarillo con borde y fondo oscuro" >> "$GITHUB_STEP_SUMMARY"
           echo "- Música: desactivada temporalmente; no se usará música aleatoria sin licencia verificada" >> "$GITHUB_STEP_SUMMARY"
