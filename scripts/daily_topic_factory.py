@@ -128,6 +128,13 @@ No reutilices casos de la lista. Para actualidad, fecha y URL deben proceder de 
     selected["status"]="selected"
     selected["selected_for_date"]=TODAY
     queue["items"]=fresh[1:]+[x for x in queue.get("items",[]) if x.get("id") not in {y.get("id") for y in fresh}]
+    # Añade las ideas nuevas al catálogo que ya consume el workflow diario.
+    existing_ids={x["id"] for x in topics}
+    for item in fresh:
+        if item["id"] not in existing_ids:
+            topics.append({"id":item["id"],"video_subject":item["video_subject"]})
+            existing_ids.add(item["id"])
+    TOPICS.write_text(json.dumps(topics,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     QUEUE.write_text(json.dumps(queue,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     OUT.write_text(selected["video_subject"],encoding="utf-8")
     ID_OUT.write_text(selected["id"],encoding="utf-8")
