@@ -96,8 +96,12 @@ def main():
         "research_leads":[t["video_subject"]],"source_urls":[],
         "checked_on":TODAY,"status":"queued"}
         for t in topics if t["id"] not in used and t["id"] not in queued_ids]
-    fresh=[x for x in pending if x.get("timeliness_type")!="recent_update" or
-           x.get("checked_on")==TODAY]
+    fresh=[]
+    for item in pending:
+        if item.get("timeliness_type")=="recent_update" and item.get("checked_on")!=TODAY:
+            item["timeliness_type"]="evergreen"
+            item["timeliness_reason"]="La novedad no se ha revalidado hoy; se conserva solo como tema histórico."
+        fresh.append(item)
     fresh.extend(evergreen_seed)
     discovered_urls={x["url"] for x in news}
     # Ninguna propuesta de actualidad se acepta si no cita una URL realmente encontrada hoy.
