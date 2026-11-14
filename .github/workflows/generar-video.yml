@@ -94,15 +94,15 @@ jobs:
             python3 scripts/daily_topic_factory.py
           fi
           cat > topic_prompt.txt <<'PROMPT'
-          GUION DOCUMENTAL DE 2.300-2.500 PALABRAS en español de España, para narración de 14-17 minutos. Nunca menos de 2.200 palabras. Desarrolla, no resumas ni rellenes.
-          ESTRUCTURA: gancho inicial; contexto y protagonistas; cronología detallada; pruebas, documentos y testimonios; hipótesis contrastadas; contradicciones y explicaciones alternativas; hechos confirmados frente a debates y lagunas; consecuencias y estado actual; conclusión razonada y pregunta final.
-          RIGOR: no inventes hechos, fechas, nombres, citas, diálogos, documentos, fuentes ni enlaces. Prioriza fuentes primarias, archivos oficiales, estudios académicos e informes identificables. Atribuye las hipótesis y distingue claramente hechos, teorías, rumores y dudas. Si no puedes verificar una referencia, márcala como pendiente; no la presentes como verificada.
-          ACTUALIDAD: las noticias y GDELT son pistas, nunca pruebas. Comprueba la fecha, abre la fuente original, busca comunicados oficiales y actualizaciones/rectificaciones. Si no puedes verificar el vínculo temporal, trata el caso como evergreen. Expresa el estado del caso con fecha y atribución; no afirmes que sigue abierto o está resuelto sin confirmación reciente.
-          VALOR: análisis propio, contexto específico y educativo; episodio original, no plantilla repetida. Sugiere recursos visuales pertinentes, mapas y cronologías, sin repetir clips de stock.
-          DIRECCIÓN VISUAL CASPITAS: documental realista. Prioriza fotografías históricas, material de archivo, vídeo documental, mapas, documentos y recursos reales pertinentes a cada escena. No usar personajes 2D, stickmen, cómic, storyboard ilustrado ni animaciones explicativas. Evita repetir el mismo clip; cada recurso debe corresponder al hecho narrado, respetar su época y no inducir a error. Usa movimientos de cámara discretos sobre imágenes fijas y transiciones sobrias. La imagen debe acompañar exactamente lo que se está contando.
-          ESTILO: tono serio, inmersivo y natural. Sin notas de cámara, instrucciones al editor ni saludos. Trata tragedias con respeto, sin morbo ni imágenes gráficas. No presentes conspiraciones como hechos.
-          DERECHOS: no presupongas licencia comercial de voz, música o imágenes; evita música sin licencia documentada.
-          PROMPT
+          DOCUMENTAL DE 2.300-2.500 PALABRAS en español de España (14-17 min); nunca menos de 2.200. Desarrolla con detalle, sin resumir ni rellenar.
+          ESTRUCTURA: gancho; contexto y protagonistas; cronología; pruebas, documentos y testimonios; hipótesis contrastadas; contradicciones y alternativas; hechos frente a debates y lagunas; consecuencias y estado actual; conclusión razonada y pregunta final.
+          RIGOR: no inventes hechos, fechas, nombres, citas, diálogos, documentos, fuentes ni enlaces. Prioriza fuentes primarias, archivos oficiales, estudios e informes identificables. Atribuye hipótesis y separa hechos, teorías, rumores y dudas. Referencias no verificables: márcalas pendientes.
+          ACTUALIDAD: noticias y GDELT son pistas, no pruebas. Comprueba fecha y fuente original, busca comunicados y rectificaciones. Sin vínculo temporal verificable, trata el tema como evergreen. Fecha y atribuye el estado del caso; no digas que sigue abierto o resuelto sin confirmación reciente.
+          VALOR: análisis propio, contexto específico y educativo; episodio original. Propón mapas, cronologías y recursos visuales pertinentes, sin repetir clips.
+          VISUAL CASPITAS: documental realista; usa fotografías históricas, archivo, vídeo documental, mapas, documentos y recursos reales adecuados a cada escena y época. PROHIBIDO: personajes 2D, stickmen, cómic, storyboard ilustrado o animaciones explicativas. No repitas clips ni uses imágenes engañosas. Movimientos discretos y transiciones sobrias; cada imagen debe corresponder a la narración.
+          ESTILO: serio, inmersivo y natural. Sin notas de cámara, instrucciones al editor ni saludos. Trata tragedias con respeto y sin morbo ni imágenes gráficas. Nunca presentes conspiraciones como hechos.
+          DERECHOS: no presupongas licencias comerciales de voz, música o imágenes; evita música sin licencia documentada.
+PROMPT
           echo "Tema seleccionado: $(cat topic_subject.txt)"
           python3 - <<'PY'
           import json
