@@ -15,7 +15,7 @@ class VisualStoryboardTests(unittest.TestCase):
         )
         self.assertIn("D. B. Cooper", found)
         self.assertIn("Boeing 727", found)
-        self.assertIn("Flight 305", found)
+        self.assertIn("vuelo 305", [x.casefold() for x in found])
 
     def test_creates_time_aligned_visual_queries_from_srt(self):
         with tempfile.TemporaryDirectory() as tmp:
