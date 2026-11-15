@@ -416,6 +416,30 @@ jobs:
           fi
           echo "Vídeo validado y preparado: $final"
 
+      - name: Buscar fotos y documentos relacionados con cada tramo del relato
+        if: steps.local_time.outputs.run_now == 'true' && success()
+        run: |
+          set -euo pipefail
+          source_video="${{ steps.prepared_video.outputs.video_path }}"
+          python3 scripts/build_visual_storyboard.py \
+            --srt output/subtitles.srt \
+            --topic "$(cat output/tema.txt)" \
+            --output output/visual_storyboard.json \
+            --interval 36 \
+            --scene-seconds 5
+          python3 scripts/research_visual_assets.py \
+            --storyboard output/visual_storyboard.json \
+            --output-dir output/visual_assets
+          python3 scripts/hybrid_visual_engine.py \
+            --video "$source_video" \
+            --srt output/subtitles.srt \
+            --output output/visual-enhanced.mp4 \
+            --storyboard output/hybrid_storyboard.json \
+            --plan output/visual_storyboard.json \
+            --scene-seconds 5
+          mv output/visual-enhanced.mp4 "$source_video"
+          echo "Material documental incorporado solo cuando hay una coincidencia de archivo con licencia identificada."
+
       - name: Renderizar subtítulos karaoke por frases
         if: steps.local_time.outputs.run_now == 'true' && success()
         run: |
