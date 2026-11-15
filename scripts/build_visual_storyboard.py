@@ -29,7 +29,7 @@ def entities(text):
     ]
     found=[]
     for pattern in patterns:
-        for value in re.findall(pattern,text):
+        for value in re.findall(pattern,text,re.I if "Flight" in pattern else 0):
             value=re.sub(r"\s+"," ",value).strip(" .")
             words=value.casefold().split()
             if words and words[0] in STOP: value=" ".join(value.split()[1:])
