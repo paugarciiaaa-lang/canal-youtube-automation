@@ -65,7 +65,7 @@ def main():
             kind,label="document","Documento o pista mencionada"
         else:
             kind,label="motion_graphic","Concepto del fragmento"
-        query=(names[0] if names else "")
+        query=(names[len(scenes) % len(names)] if names else "")
         scenes.append({
           "index":len(scenes)+1,"start":round(cursor,3),"duration":a.scene_seconds,
           "type":kind,"label":label,"excerpt":excerpt[:220],
