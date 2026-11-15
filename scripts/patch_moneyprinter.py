@@ -170,6 +170,14 @@ new_function = '''def generate_script(task_id, params):
 '''
 task = task[:start] + new_function + task[end:]
 
+# Increase ordered search terms so each narrative section gets its own visual
+# query. MoneyPrinterTurbo downloads and concatenates these in script order.
+old_terms = "amount=8 if params.match_materials_to_script else 5,"
+new_terms = "amount=18 if params.match_materials_to_script else 5,"
+if old_terms not in task:
+    raise SystemExit("No se encontró el generador de términos de MPT; se cancela el parche.")
+task = task.replace(old_terms, new_terms, 1)
+
 # Reject short TTS before subtitle generation, stock downloads, clip processing or rendering.
 old_audio_guard = """    if not audio_file:
         return _mark_task_failed(
