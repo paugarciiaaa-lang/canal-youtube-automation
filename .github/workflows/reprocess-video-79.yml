@@ -34,11 +34,11 @@ jobs:
 
       - name: Descargar el artefacto original del vídeo 79
         env:
-          GH_TOKEN: \${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           mkdir -p input output
-          gh api "repos/\${GITHUB_REPOSITORY}/actions/artifacts/14122814799/zip" > /tmp/video79.zip
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/14122814799/zip" > /tmp/video79.zip
           unzip -q /tmp/video79.zip -d input
           cp input/Caspitas-2026-11-14-79.mp4 output/Caspitas-video-79-original.mp4
           cp input/subtitles.srt output/subtitles.srt
