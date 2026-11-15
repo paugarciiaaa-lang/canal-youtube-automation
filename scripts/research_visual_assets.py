@@ -98,7 +98,7 @@ def main():
     p.add_argument("--storyboard",required=True,type=Path)
     p.add_argument("--output-dir",required=True,type=Path)
     a=p.parse_args(); data=json.loads(a.storyboard.read_text(encoding="utf-8"))
-    records=[]; map_count=0; image_count=0
+    records=[]; map_count=0; image_count=0; seen_assets=set()
     for scene in data.get("scenes",[]):
       asset=None
       if scene.get("type")=="map" and scene.get("location_query"):
@@ -124,9 +124,18 @@ def main():
         asset=commons_candidate(scene["visual_search"],a.output_dir/f"commons_{scene['index']:02d}.jpg")
         if asset: image_count+=1
         else: asset={"status":"no_accepted_commons_result","query":scene["visual_search"]}
-      if asset:
+      if asset and asset.get("path"):
+        identity=asset.get("page_url") or asset.get("source_url") or asset.get("title") or asset.get("path")
+        if identity in seen_assets:
+          try: Path(asset["path"]).unlink(missing_ok=True)
+          except Exception: pass
+          asset={"status":"duplicate_asset_skipped","identity":str(identity)[:180]}
+        else:
+          seen_assets.add(identity)
+          scene["asset"]=asset
+          scene["asset_path"]=asset["path"]
+      elif asset:
         scene["asset"]=asset
-        if asset.get("path"): scene["asset_path"]=asset["path"]
       records.append({"scene":scene.get("index"),"type":scene.get("type"),"asset":asset or {"status":"not_requested"}})
       time.sleep(1.05)
     manifest={"version":"visual-research-v1","maps_found":map_count,"licensed_commons_candidates":image_count,
