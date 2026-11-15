@@ -1,0 +1,90 @@
+name: Reprocesar vídeo 79 de Caspitas
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  reprocess:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Python y FFmpeg
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip pillow
+
+      - name: Descargar el artefacto original del vídeo 79
+        env:
+          GH_TOKEN: \${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p input output
+          gh api "repos/\${GITHUB_REPOSITORY}/actions/artifacts/14122814799/zip" > /tmp/video79.zip
+          unzip -q /tmp/video79.zip -d input
+          cp input/Caspitas-2026-11-14-79.mp4 output/Caspitas-video-79-original.mp4
+          cp input/subtitles.srt output/subtitles.srt
+          cp input/tema.txt output/tema.txt
+          echo "Original: $(du -h output/Caspitas-video-79-original.mp4 | cut -f1)"
+
+      - name: Buscar y añadir fotos/documentos relacionados con la historia
+        run: |
+          set -euo pipefail
+          python scripts/build_visual_storyboard.py \
+            --srt output/subtitles.srt \
+            --topic "$(cat output/tema.txt)" \
+            --output output/visual_storyboard.json \
+            --interval 36 \
+            --scene-seconds 5
+          python scripts/research_visual_assets.py \
+            --storyboard output/visual_storyboard.json \
+            --output-dir output/visual_assets
+          python scripts/hybrid_visual_engine.py \
+            --video output/Caspitas-video-79-original.mp4 \
+            --srt output/subtitles.srt \
+            --output output/Caspitas-video-79-visual.mp4 \
+            --storyboard output/hybrid_storyboard.json \
+            --plan output/visual_storyboard.json \
+            --scene-seconds 5
+
+      - name: Aplicar subtítulos karaoke por frases
+        run: |
+          set -euo pipefail
+          python scripts/render_karaoke_subtitles.py \
+            --video output/Caspitas-video-79-visual.mp4 \
+            --srt output/subtitles.srt \
+            --output output/Caspitas-video-79-karaoke.mp4 \
+            --ass-output output/subtitles_karaoke.ass \
+            --crf 19
+
+      - name: Validar resultado final
+        run: |
+          set -euo pipefail
+          ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 output/Caspitas-video-79-karaoke.mp4
+          ffprobe -v error -show_entries stream=codec_type,width,height -of json output/Caspitas-video-79-karaoke.mp4
+          test -s output/subtitles_karaoke.ass
+          test -s output/visual_assets/visual_asset_manifest.json
+
+      - name: Subir paquete privado para revisión
+        uses: actions/upload-artifact@v4
+        with:
+          name: caspitas-video-79-karaoke-visual-review
+          path: |
+            output/Caspitas-video-79-karaoke.mp4
+            output/subtitles_karaoke.ass
+            output/visual_storyboard.json
+            output/hybrid_storyboard.json
+            output/visual_assets/visual_asset_manifest.json
+            output/subtitles.srt
+          if-no-files-found: error
+          retention-days: 14
