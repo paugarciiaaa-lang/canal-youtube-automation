@@ -22,7 +22,7 @@ class MoneyPrinterPatchTests(unittest.TestCase):
     return "old"
 
 def generate_terms():
-    pass
+    amount=8 if params.match_materials_to_script else 5,
 
 def audio_stage():
     if not audio_file:
