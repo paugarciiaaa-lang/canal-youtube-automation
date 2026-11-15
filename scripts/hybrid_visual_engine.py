@@ -341,6 +341,15 @@ def main():
             if spaced and scene["start"] < spaced[-1]["start"]+spaced[-1]["duration"]+2: continue
             spaced.append(scene)
         scenes=spaced
+        # Never replace relevant footage with an empty placeholder. Real photo,
+        # map and document inserts require a downloaded, licensed asset path.
+        asset_required={"photo","map","evidence","parallax"}
+        before=len(scenes)
+        scenes=[s for s in scenes if s.get("type") not in asset_required or
+                (s.get("asset_path") and Path(s["asset_path"]).is_file())]
+        skipped=before-len(scenes)
+        if skipped:
+            print(f"Se descartan {skipped} escenas sin recurso documental verificable.")
         planner="semantic"
     else:
         scenes=plan(cues,duration,args.interval,args.scene_seconds)
