@@ -1,6 +1,14 @@
 name: Reprocesar vídeo 79 de Caspitas
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/render_karaoke_subtitles.py"
+      - "scripts/build_visual_storyboard.py"
+      - "scripts/research_visual_assets.py"
+      - "scripts/hybrid_visual_engine.py"
+      - ".github/workflows/reprocess-video-79.yml"
   workflow_dispatch:
 
 permissions:
