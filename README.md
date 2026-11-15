@@ -27,8 +27,10 @@ El workflow `.github/workflows/generar-video.yml`:
 - Intenta Gemini 3.5 Flash Lite y después Gemini 3.8 Flash; si ambos fallan o generan un vídeo demasiado corto, recurre a OpenRouter.
 - Comprueba el MP4 y su duración tras cada intento antes de darlo por válido, evitando aceptar vídeos incompletos o de menos de 9 minutos.
 - Da hasta 150 minutos a cada intento de proveedor y hasta 180 minutos al trabajo completo, con registro de errores.
-- Usa material documental de Pixabay y la voz española masculina `es-ES-AlvaroNeural` mediante Edge TTS.
-- No añade ilustraciones 2D, personajes dibujados, stickmen ni storyboards animados: conserva el montaje documental original.
+- Usa búsquedas visuales ordenadas por tramos del guion: 18 consultas específicas en lugar de 8 búsquedas generales, con clips de Pixabay seleccionados según la secuencia narrada.
+- Añade un storyboard temporal basado en la transcripción y busca fotografías/documentos de Wikimedia Commons; solo inserta recursos con licencia identificada y evita repetir la misma imagen.
+- Aplica subtítulos karaoke por frases: la frase permanece visible y cada palabra se resalta en amarillo al pronunciarse.
+- No añade personajes dibujados, stickmen ni recreaciones cómic. Puede insertar fotografías y documentos de archivo licenciados, mapas y cronologías verificables sobre el metraje documental.
 - Aumenta el tiempo límite de concatenación de FFmpeg y permite procesar dos clips simultáneamente para reducir el cuello de botella del montaje.
 - Comprueba que el MP4 exista y dure al menos 10 minutos; el objetivo editorial actual es de 14-17 minutos.
 - Guarda el vídeo y los datos básicos como artefacto de GitHub Actions durante 14 días.
