@@ -416,6 +416,20 @@ jobs:
           fi
           echo "Vídeo validado y preparado: $final"
 
+      - name: Renderizar subtítulos karaoke por frases
+        if: steps.local_time.outputs.run_now == 'true' && success()
+        run: |
+          set -euo pipefail
+          source_video="${{ steps.prepared_video.outputs.video_path }}"
+          python3 scripts/render_karaoke_subtitles.py \
+            --video "$source_video" \
+            --srt output/subtitles.srt \
+            --output output/karaoke-render.mp4 \
+            --ass-output output/subtitles_karaoke.ass \
+            --crf 19
+          mv output/karaoke-render.mp4 "$source_video"
+          echo "Se han aplicado frases sincronizadas con resaltado progresivo de cada palabra."
+
       - name: Guardar tema en el historial para evitar repeticiones
         if: steps.local_time.outputs.run_now == 'true' && success()
         env:
@@ -524,7 +538,7 @@ jobs:
           echo "- Subtítulos: $(python3 -c 'import json; print(json.load(open("output/qa_report.json"))["subtitle_cues"])') cues revisados; comprobar también la escucha final" >> "$GITHUB_STEP_SUMMARY"
           echo "- Visuales: montaje documental original con material real de Pixabay; sin escenas ilustradas 2D añadidas" >> "$GITHUB_STEP_SUMMARY"
           echo "- Voz: es-ES-AlvaroNeural (Edge TTS)" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Subtítulos: palabra a palabra, sin animación spring, amarillo con borde y fondo oscuro" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Subtítulos: karaoke por frases; cada palabra se resalta en amarillo al pronunciarse, con frase completa legible" >> "$GITHUB_STEP_SUMMARY"
           echo "- Música: desactivada temporalmente; no se usará música aleatoria sin licencia verificada" >> "$GITHUB_STEP_SUMMARY"
           echo "- Fuentes: el guion solicita referencias; deben comprobarse manualmente, no existe verificación automática independiente." >> "$GITHUB_STEP_SUMMARY"
           echo "- Voz Edge TTS: derechos comerciales no confirmados; no considerar monetización verificada." >> "$GITHUB_STEP_SUMMARY"
