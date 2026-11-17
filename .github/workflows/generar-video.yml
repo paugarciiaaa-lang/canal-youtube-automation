@@ -202,6 +202,7 @@ jobs:
           openrouter_model_name = "nvidia/nemotron-3-ultra-550b-a55b:free"
           subtitle_provider = "edge"
           edge_tts_timeout = 600
+          subtitle_burn_enabled = false
           ffmpeg_concat_timeout_seconds = 7200
           material_concurrency = 2
           video_clip_concurrency = 2
