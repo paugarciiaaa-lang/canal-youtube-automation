@@ -64,8 +64,7 @@ jobs:
             --srt input/subtitles-original.srt \
             --output-video output/video85-sin-frase.mp4 \
             --output-srt output/subtitles-clean.srt \
-            --report output/branding-cut-report.json \\
-            --ocr-evidence output/branding-ocr-evidence.json
+            --report output/branding-cut-report.json --ocr-evidence output/branding-ocr-evidence.json
           if grep -Eiq 'documental[[:space:]]+(de[[:space:]]+)?caspitas' output/subtitles-clean.srt; then
             echo "::error::La frase de marca sigue presente en los subtítulos."
             exit 1
