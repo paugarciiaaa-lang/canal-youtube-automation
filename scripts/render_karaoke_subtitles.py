@@ -92,6 +92,7 @@ def main():
     p.add_argument("--output", required=True, type=Path)
     p.add_argument("--ass-output", type=Path, default=None)
     p.add_argument("--crf", type=int, default=19)
+    p.add_argument("--mask-existing-subtitles", action="store_true", help="Oculta la antigua capa de subtítulos antes de dibujar una sola capa nueva.")
     a = p.parse_args()
     if not a.video.is_file() or not a.srt.is_file():
         raise SystemExit("No se encuentra el MP4 o el SRT.")
@@ -99,7 +100,14 @@ def main():
     groups = build_ass(parse_srt(a.srt), ass)
     a.output.parent.mkdir(parents=True, exist_ok=True)
     escaped = str(ass.resolve()).replace("\\", "/").replace(":", r"\:")
-    cmd = ["ffmpeg", "-y", "-i", str(a.video), "-vf", f"ass='{escaped}'",
+    filters = []
+    if a.mask_existing_subtitles:
+        # Cover the original burned-in captions before rendering the cleaned
+        # karaoke layer, so only one readable subtitle track remains visible.
+        filters.append("drawbox=x=0:y=ih-220:w=iw:h=220:color=black@1.0:t=fill")
+    filters.append(f"ass='{escaped}'")
+    video_filter = ",".join(filters)
+    cmd = ["ffmpeg", "-y", "-i", str(a.video), "-vf", video_filter,
            "-map", "0:v:0", "-map", "0:a:0?", "-c:v", "libx264", "-preset", "veryfast",
            "-crf", str(a.crf), "-pix_fmt", "yuv420p", "-c:a", "copy",
            "-movflags", "+faststart", str(a.output)]
