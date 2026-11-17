@@ -18,7 +18,7 @@ class MoneyPrinterPatchTests(unittest.TestCase):
             video = services / "video.py"
 
             task.write_text(
-                '''def generate_script(task_id, params):
+                '''import re\ndef generate_script(task_id, params):
     return "old"
 
 def generate_terms():
