@@ -1,0 +1,113 @@
+name: Reprocesar vídeo 85 de Caspitas
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/remove_branding_segments.py"
+      - "scripts/render_karaoke_subtitles.py"
+      - "tests/test_remove_branding_segments.py"
+      - ".github/workflows/reprocess-video-85.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  reprocess:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Python y FFmpeg
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+
+      - name: Descargar artefacto original del vídeo 85
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p input output
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/14278804308/zip" > /tmp/video85.zip
+          unzip -q /tmp/video85.zip -d input
+          video="$(find input -type f -name '*.mp4' -size +1M | head -n 1)"
+          srt="$(find input -type f -name 'subtitles.srt' | head -n 1)"
+          test -n "$video" && test -n "$srt"
+          cp "$video" input/video85-original.mp4
+          cp "$srt" input/subtitles-original.srt
+          echo "Vídeo original: $(du -h input/video85-original.mp4 | cut -f1)"
+          echo "Subtítulos originales: $(wc -l < input/subtitles-original.srt) líneas"
+
+      - name: Cortar únicamente los fragmentos que dicen documental Caspitas
+        run: |
+          set -euo pipefail
+          python scripts/remove_branding_segments.py \
+            --video input/video85-original.mp4 \
+            --srt input/subtitles-original.srt \
+            --output-video output/video85-sin-frase.mp4 \
+            --output-srt output/subtitles-clean.srt \
+            --report output/branding-cut-report.json
+          if grep -Eiq 'documental[[:space:]]+(de[[:space:]]+)?caspitas' output/subtitles-clean.srt; then
+            echo "::error::La frase de marca sigue presente en los subtítulos."
+            exit 1
+          fi
+
+      - name: Dejar una sola capa de subtítulos sincronizados
+        run: |
+          set -euo pipefail
+          python scripts/render_karaoke_subtitles.py \
+            --video output/video85-sin-frase.mp4 \
+            --srt output/subtitles-clean.srt \
+            --output output/Caspitas-video-85-corregido.mp4 \
+            --ass-output output/subtitles-karaoke-clean.ass \
+            --mask-existing-subtitles \
+            --crf 19
+
+      - name: Validar el vídeo corregido
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, subprocess
+          from pathlib import Path
+          video=Path("output/Caspitas-video-85-corregido.mp4")
+          if not video.is_file() or video.stat().st_size < 1_000_000:
+              raise SystemExit("El MP4 corregido no existe o es demasiado pequeño.")
+          data=json.loads(subprocess.check_output([
+              "ffprobe","-v","error","-show_streams","-show_format","-of","json",str(video)
+          ],text=True))
+          streams=data["streams"]
+          v=next((x for x in streams if x.get("codec_type")=="video"),None)
+          a=next((x for x in streams if x.get("codec_type")=="audio"),None)
+          duration=float(data["format"]["duration"])
+          if not v or not a: raise SystemExit("Falta audio o vídeo.")
+          if (v.get("width"),v.get("height")) != (1920,1080):
+              raise SystemExit("Resolución inesperada.")
+          if duration < 600: raise SystemExit("Duración inferior a 10 minutos.")
+          report=json.loads(Path("output/branding-cut-report.json").read_text())
+          report["final_duration_seconds"]=round(duration,3)
+          report["final_resolution"]="1920x1080"
+          report["final_size_mb"]=round(video.stat().st_size/1024/1024,2)
+          Path("output/branding-cut-report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          PY
+
+      - name: Guardar paquete corregido para revisión privada
+        uses: actions/upload-artifact@v4
+        with:
+          name: caspitas-video-85-corregido-revision
+          path: |
+            output/Caspitas-video-85-corregido.mp4
+            output/subtitles-clean.srt
+            output/subtitles-karaoke-clean.ass
+            output/branding-cut-report.json
+          if-no-files-found: error
+          retention-days: 14
