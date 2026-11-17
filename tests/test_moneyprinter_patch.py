@@ -94,8 +94,8 @@ def subtitle_render(params, subtitle_path):
                     return self.responses.pop(0)
 
             from types import SimpleNamespace
-            first = "inicio " * 1800
-            extra = "continuacion " * 500 + "Este es el documental Caspitas. "
+            first = ("inicio " * 1800) + ". "
+            extra = ("continuacion " * 500) + ". Este es el documental Caspitas. "
             fake_llm = FakeLLM([first, extra])
             namespace = {
                 "logger": Logger(),
