@@ -46,6 +46,10 @@ def audio_stage():
 
 def render(kwargs):
     kwargs.setdefault("ffmpeg_params", _BT709_FFMPEG_PARAMS)
+
+def subtitle_render(params, subtitle_path):
+    if params.subtitle_enabled and subtitle_path and os.path.exists(subtitle_path):
+        return True
 ''',
                 encoding="utf-8",
             )
@@ -66,6 +70,9 @@ def render(kwargs):
             self.assertIn("best_script", patched_task)
             self.assertIn("continuation_round", patched_task)
             self.assertIn("append_continuation", patched_task)
+            self.assertIn("documental\\\\s+", patched_task)
+            patched_video = video.read_text(encoding="utf-8")
+            self.assertIn("subtitle_burn_enabled", patched_video)
             self.assertIn("final_count = word_count(video_script)", patched_task)
             self.assertNotIn('video_script = ""', patched_task)
             self.assertIn("guion demasiado corto: {final_count} palabras", patched_task)
