@@ -70,7 +70,7 @@ def subtitle_render(params, subtitle_path):
             self.assertIn("best_script", patched_task)
             self.assertIn("continuation_round", patched_task)
             self.assertIn("append_continuation", patched_task)
-            self.assertIn("documental\\\\s+", patched_task)
+            self.assertIn("documental\\s+", patched_task)
             patched_video = video.read_text(encoding="utf-8")
             self.assertIn("subtitle_burn_enabled", patched_video)
             self.assertIn("final_count = word_count(video_script)", patched_task)
