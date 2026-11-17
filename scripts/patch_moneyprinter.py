@@ -153,6 +153,14 @@ new_function = '''def generate_script(task_id, params):
     # Always validate and report the best draft actually obtained. Never reset
     # a non-empty short draft to an empty string before the final error report.
     video_script = best_script.strip()
+    # Remove complete narration sentences containing the unwanted spoken brand phrase.
+    sentences = re.split(r"(?<=[.!?])\s+", video_script)
+    kept_sentences = [sentence for sentence in sentences
+                      if not re.search(r"\bdocumental\s+(?:de\s+)?caspitas\b", sentence, re.IGNORECASE)]
+    removed_sentences = len(sentences) - len(kept_sentences)
+    if removed_sentences:
+        logger.info(f"removed {removed_sentences} branded narration fragment(s)")
+    video_script = " ".join(kept_sentences).strip()
     final_count = word_count(video_script)
     if not video_script or final_count < minimum_words:
         message = (
@@ -169,6 +177,16 @@ new_function = '''def generate_script(task_id, params):
 
 '''
 task = task[:start] + new_function + task[end:]
+
+# Keep generating subtitle.srt, but prevent MoneyPrinterTurbo from burning a
+# first caption layer into the MP4. The workflow adds the single final karaoke
+# layer afterwards.
+old_subtitle_render = 'if params.subtitle_enabled and subtitle_path and os.path.exists(subtitle_path):'
+new_subtitle_render = 'if params.subtitle_enabled and config.app.get("subtitle_burn_enabled", True) and subtitle_path and os.path.exists(subtitle_path):'
+if old_subtitle_render not in video:
+    raise SystemExit("No se encontró el punto de renderizado de subtítulos en video.py.")
+video = video.replace(old_subtitle_render, new_subtitle_render, 1)
+
 
 # Increase ordered search terms so each narrative section gets its own visual
 # query. MoneyPrinterTurbo downloads and concatenates these in script order.
