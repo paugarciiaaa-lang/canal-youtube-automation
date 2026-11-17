@@ -95,7 +95,7 @@ def subtitle_render(params, subtitle_path):
 
             from types import SimpleNamespace
             first = "inicio " * 1800
-            extra = "continuacion " * 500
+            extra = "continuacion " * 500 + "Este es el documental Caspitas. "
             fake_llm = FakeLLM([first, extra])
             namespace = {
                 "logger": Logger(),
@@ -114,6 +114,7 @@ def subtitle_render(params, subtitle_path):
             result = namespace["generate_script"]("test-task", params)
             self.assertIsNotNone(result)
             self.assertGreaterEqual(len(result.split()), 2200)
+            self.assertNotIn("documental Caspitas", result)
             self.assertEqual(fake_llm.calls, 2)
 
             # If all continuations remain too short, the error must report
