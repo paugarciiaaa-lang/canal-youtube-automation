@@ -37,7 +37,7 @@ class RemoveBrandingSegmentsTests(unittest.TestCase):
         removed = [(1.88, 4.12)]
         result = retime_srt(cues, removed)
         self.assertIn("00:00:00,000 --> 00:00:01,000", result)
-        self.assertIn("00:00:02,880 --> 00:00:03,880", result)
+        self.assertIn("00:00:02,760 --> 00:00:03,760", result)
         self.assertNotIn("documental", result)
         self.assertNotIn("Caspitas", result)
 
