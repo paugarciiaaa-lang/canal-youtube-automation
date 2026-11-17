@@ -28,7 +28,7 @@ jobs:
           python-version: "3.11"
       - run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg tesseract-ocr
           python -m pip install --upgrade pip
 
       - name: Descargar artefacto original del vídeo 85
@@ -47,6 +47,15 @@ jobs:
           echo "Vídeo original: $(du -h input/video85-original.mp4 | cut -f1)"
           echo "Subtítulos originales: $(wc -l < input/subtitles-original.srt) líneas"
 
+      - name: Localizar el rótulo en pantalla mediante OCR
+        run: |
+          set -euo pipefail
+          python scripts/scan_branding_ocr.py \
+            --video input/video85-original.mp4 \
+            --output output/branding-ocr-evidence.json \
+            --fps 1.0 \
+            --width 960
+
       - name: Cortar únicamente los fragmentos que dicen documental Caspitas
         run: |
           set -euo pipefail
@@ -55,7 +64,8 @@ jobs:
             --srt input/subtitles-original.srt \
             --output-video output/video85-sin-frase.mp4 \
             --output-srt output/subtitles-clean.srt \
-            --report output/branding-cut-report.json
+            --report output/branding-cut-report.json \\
+            --ocr-evidence output/branding-ocr-evidence.json
           if grep -Eiq 'documental[[:space:]]+(de[[:space:]]+)?caspitas' output/subtitles-clean.srt; then
             echo "::error::La frase de marca sigue presente en los subtítulos."
             exit 1
@@ -109,5 +119,6 @@ jobs:
             output/subtitles-clean.srt
             output/subtitles-karaoke-clean.ass
             output/branding-cut-report.json
+            output/branding-ocr-evidence.json
           if-no-files-found: error
           retention-days: 14
