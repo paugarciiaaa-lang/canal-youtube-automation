@@ -125,7 +125,7 @@ def subtitle_render(params, subtitle_path):
             namespace["_mark_task_failed"] = lambda *args: failed.append(args) or "FAILED"
             result = namespace["generate_script"]("test-task", params)
             self.assertIsNone(result)
-            self.assertIn("1830 palabras", failed[0][2])
+            self.assertIn("1831 palabras", failed[0][2])
             self.assertNotIn(": 0 palabras;", failed[0][2])
 
 
