@@ -156,7 +156,7 @@ new_function = '''def generate_script(task_id, params):
     # Remove complete narration sentences containing the unwanted spoken brand phrase.
     sentences = re.split(r"(?<=[.!?])\s+", video_script)
     kept_sentences = [sentence for sentence in sentences
-                      if not re.search(r"\bdocumental\s+(?:de\s+)?caspitas\b", sentence, re.IGNORECASE)]
+                      if not re.search(r"\\bdocumental\\s+(?:de\\s+)?caspitas\\b", sentence, re.IGNORECASE)]
     removed_sentences = len(sentences) - len(kept_sentences)
     if removed_sentences:
         logger.info(f"removed {removed_sentences} branded narration fragment(s)")
