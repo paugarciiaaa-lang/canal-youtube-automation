@@ -73,6 +73,28 @@ def find_branding_intervals(cues: list[dict], padding: float = 0.12) -> list[tup
     return merged
 
 
+def find_ocr_intervals(path: Path, before: float = 1.5, after: float = 2.0) -> list[tuple[float, float]]:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    times = sorted(float(item["time_seconds"]) for item in data.get("evidence", []))
+    groups = []
+    for value in times:
+        if groups and value - groups[-1][-1] <= 3.0:
+            groups[-1].append(value)
+        else:
+            groups.append([value])
+    return [(max(0.0, group[0] - before), group[-1] + after) for group in groups]
+
+
+def merge_intervals(intervals: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    merged = []
+    for start, end in sorted(intervals):
+        if merged and start <= merged[-1][1] + 0.15:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+        else:
+            merged.append((start, end))
+    return merged
+
+
 def retime_srt(cues: list[dict], removed: list[tuple[float, float]]) -> str:
     output = []
     for cue in cues:
@@ -134,10 +156,13 @@ def main() -> None:
     parser.add_argument("--output-video", required=True, type=Path)
     parser.add_argument("--output-srt", required=True, type=Path)
     parser.add_argument("--report", required=True, type=Path)
+    parser.add_argument("--ocr-evidence", type=Path, default=None)
     parser.add_argument("--padding", type=float, default=0.12)
     args = parser.parse_args()
     cues = read_srt(args.srt)
     removed = find_branding_intervals(cues, args.padding)
+    ocr_intervals = find_ocr_intervals(args.ocr_evidence) if args.ocr_evidence else []
+    removed = merge_intervals(removed + ocr_intervals)
     if not removed:
         raise SystemExit("No se encontró 'documental Caspitas' en los subtítulos; no se modifica el vídeo.")
     cut_video(args.video, args.output_video, removed)
@@ -146,6 +171,7 @@ def main() -> None:
     report = {
         "status": "processed",
         "removed_phrase": "documental Caspitas",
+        "ocr_evidence_frames": len(json.loads(args.ocr_evidence.read_text(encoding="utf-8")).get("evidence", [])) if args.ocr_evidence else 0,
         "removed_intervals_seconds": [[round(a, 3), round(b, 3)] for a, b in removed],
         "removed_duration_seconds": round(sum(b-a for a, b in removed), 3),
         "original_subtitle_cues": len(cues),
